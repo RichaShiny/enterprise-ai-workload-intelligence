@@ -134,6 +134,19 @@ def simulate_tool_outcome(row, tool, rng):
         0.05,
         min(0.99, success_probability)
     )
+    
+
+    expected_quality = (
+        success_probability * 0.89
+        + (1 - success_probability) * 0.46
+    )
+
+    expected_corrections = (
+        success_probability * 0.95
+        + (1 - success_probability) * 2.85
+    )
+
+    expected_latency_ms = BASE_LATENCY_MS[tool]
 
     task_success = rng.random() < success_probability
 
@@ -190,6 +203,18 @@ def simulate_tool_outcome(row, tool, rng):
     return {
         "tool": tool,
         "success_probability": success_probability,
+        "expected_quality": round(
+            expected_quality,
+            3,
+        ),
+        "expected_corrections": round(
+            expected_corrections,
+            3,
+        ),
+        "expected_latency_ms": round(
+            expected_latency_ms,
+             2,
+        ),
         "task_success": task_success,
         "quality_score": round(quality_score, 3),
         "human_corrections": human_corrections,
