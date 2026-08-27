@@ -1,0 +1,20 @@
+{"text":"Summarize this confidential internal memo for the executive team.","label":"sensitive"}
+{"text":"Rewrite this public-facing FAQ using simpler language.","label":"general"}
+{"text":"Summarize these customer comments and identify the most common complaint.","label":"general"}
+
+{"text":"Find the policy that explains whether confidential employee data can be shared externally.","label":"retrieval"}
+{"text":"Locate the documentation describing authentication failures in the API.","label":"retrieval"}
+{"text":"Find our internal guidance on handling restricted financial information.","label":"retrieval"}
+
+{"text":"Debug this Python service using the internal API documentation.","label":"technical"}
+{"text":"Explain why this SQL query returns duplicated customer records.","label":"technical"}
+{"text":"Optimize this retrieval pipeline because vector search latency is too high.","label":"technical"}
+
+{"text":"Analyze this confidential contract and identify the termination clause.","label":"sensitive"}
+{"text":"Review this restricted compliance report and summarize the main findings.","label":"sensitive"}
+{"text":"Extract employee compensation details from this private spreadsheet.","label":"sensitive"}
+
+{"text":"Find the security policy and summarize what it says about external AI providers.","label":"retrieval"}
+{"text":"Write a Python function based on the requirements in our internal documentation.","label":"technical"}
+{"text":"Summarize this internal engineering document containing confidential architecture details.","label":"sensitive"}
+{"text":"Explain this public technical article about database indexing in simple terms.","label":"general"}

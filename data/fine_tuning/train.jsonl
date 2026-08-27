@@ -1,0 +1,27 @@
+{"text":"Summarize this public meeting transcript into five bullet points.","label":"general"}
+{"text":"Rewrite this customer support response so it sounds more concise.","label":"general"}
+{"text":"Extract the main themes from these public survey responses.","label":"general"}
+{"text":"Summarize this internal project update for the team.","label":"general"}
+{"text":"Draft a short description of this product feature.","label":"general"}
+{"text":"Classify these customer comments by topic.","label":"general"}
+
+{"text":"Analyze this confidential employee compensation document.","label":"sensitive"}
+{"text":"Summarize this document containing private customer information.","label":"sensitive"}
+{"text":"Review this confidential legal agreement for potential risks.","label":"sensitive"}
+{"text":"Extract information from these private personnel records.","label":"sensitive"}
+{"text":"Analyze this restricted compliance investigation.","label":"sensitive"}
+{"text":"Summarize this document containing confidential financial data.","label":"sensitive"}
+
+{"text":"Debug this Python function and explain why the tests are failing.","label":"technical"}
+{"text":"Write a SQL query using window functions to rank customers.","label":"technical"}
+{"text":"Explain the error in this machine learning training pipeline.","label":"technical"}
+{"text":"Refactor this API implementation to reduce latency.","label":"technical"}
+{"text":"Find the bug causing this Python service to crash.","label":"technical"}
+{"text":"Optimize this database query for better performance.","label":"technical"}
+
+{"text":"Find the relevant policy governing vendor approval.","label":"retrieval"}
+{"text":"Search our documentation for the authentication requirements.","label":"retrieval"}
+{"text":"Which internal policy describes data retention requirements?","label":"retrieval"}
+{"text":"Find the contract clause related to termination rights.","label":"retrieval"}
+{"text":"Locate the documentation explaining our expense policy.","label":"retrieval"}
+{"text":"Find evidence in the knowledge base about access controls.","label":"retrieval"}

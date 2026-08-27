@@ -4,3 +4,6 @@ scikit-learn
 matplotlib
 python-dotenv
 scipy
+sentence-transformers
+transformers
+torch
