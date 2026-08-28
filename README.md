@@ -26,6 +26,23 @@ The routing API is containerized with Docker and deployed as a public FastAPI se
 
 The deployed API exposes the workload-routing interface. Core routing benchmark outcomes remain simulation-based; the production path would replace synthetic tool-performance assumptions with observed telemetry collected through shadow traffic and controlled rollout.
 
+### API Routing Examples
+
+#### High-Risk Compliance Workload
+
+A high-sensitivity, high-risk compliance workload is routed directly to the stronger model path because the expected cost of failure outweighs the savings from attempting a cheaper model first.
+
+![Direct Frontier Routing](assets/routing_direct_frontier.png)
+
+**Routing decision:** `direct_frontier`
+
+#### Technical Reasoning Workload
+
+A medium-sensitivity technical reasoning workload uses a verified cascade, allowing a lower-cost model to attempt the task first while retaining verification and escalation for uncertain or unsuccessful outputs.
+
+![Verified Cascade Routing](assets/routing_verified_cascade.png)
+
+**Routing decision:** `verified_cascade`
 ---
 
 ## Research Questions
