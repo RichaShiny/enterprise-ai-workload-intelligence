@@ -16,6 +16,16 @@ The core routing experiments use **simulated tool classes and synthetic workload
 
 Separate model experiments use pretrained open models for retrieval, faithfulness evaluation, encoder fine-tuning, and generative LoRA adaptation.
 
+## Live Deployment
+
+The routing API is containerized with Docker and deployed as a public FastAPI service on Render.
+
+- **Live API:** https://enterprise-ai-workload-intelligence.onrender.com
+- **Interactive API Docs:** https://enterprise-ai-workload-intelligence.onrender.com/docs
+- **Health Check:** https://enterprise-ai-workload-intelligence.onrender.com/health
+
+The deployed API exposes the workload-routing interface. Core routing benchmark outcomes remain simulation-based; the production path would replace synthetic tool-performance assumptions with observed telemetry collected through shadow traffic and controlled rollout.
+
 ---
 
 ## Research Questions
