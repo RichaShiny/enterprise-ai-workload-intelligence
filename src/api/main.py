@@ -13,6 +13,14 @@ class RouteRequest(BaseModel):
     sensitivity: str
     risk_level: str
 
+@app.get("/")
+def root():
+    return {
+        "service": "Enterprise AI Workload Intelligence",
+        "status": "running",
+        "docs": "/docs",
+        "health": "/health",
+    }
 
 @app.get("/health")
 def health():
