@@ -4,7 +4,12 @@ __pycache__/
 .DS_Store
 .env
 
+# Ignore generated result files by default
 results/*
+
+# Keep README figures in version control
+!results/figures/
+!results/figures/**
 !results/.gitkeep
 
 data/raw/*.csv

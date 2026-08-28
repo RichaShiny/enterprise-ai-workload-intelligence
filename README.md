@@ -1,14 +1,20 @@
 # Enterprise AI Workload Intelligence
 
-A simulation and evaluation framework for workload-aware routing of enterprise AI tasks across heterogeneous tools under cost, quality, reliability, latency, and sensitivity constraints.
+A simulation and evaluation framework for workload-aware routing of enterprise AI tasks across heterogeneous tools under cost, quality, reliability, latency, sensitivity, verification, and failure-risk constraints.
 
 Rather than assuming one model or tool should handle every enterprise workload, this project asks:
 
 > **Given a specific workload and its operational requirements, which available AI tool should handle it?**
 
+The framework extends that question one step further:
+
+> **When should an enterprise AI system use a cheaper model first and escalate, and when is it more efficient or safer to route directly to a stronger model?**
+
 The framework simulates enterprise workloads, estimates potential outcomes across multiple AI tools, detects inefficient tool allocation, applies constraint-aware routing policies, and evaluates the resulting system under repeated simulation seeds.
 
-It also explores retrieval and semantic reranking, faithfulness evaluation, regression testing, workload-classifier fine-tuning, randomized experimentation, and production-oriented deployment reasoning.
+It also explores Work-Unit-aware routing, failure and escalation economics, uncertainty-aware routing, imperfect verification, retrieval and semantic reranking, faithfulness evaluation, regression testing, workload-classifier fine-tuning, randomized experimentation, and production-oriented deployment reasoning.
+
+---
 
 ## Motivation
 
@@ -23,9 +29,23 @@ These tools have different cost, latency, quality, reliability, and governance c
 
 Routing every request to the most capable model can be expensive and unnecessary. Routing everything to the cheapest tool can reduce reliability.
 
-This project explores the problem as a **workload allocation and decision-policy problem**.
+There is also a deeper economic problem: **the cheapest model call is not necessarily the cheapest completed task**.
 
-The objective is not to identify one universally best model. It is to determine which tool is appropriate for each workload given its characteristics and operational constraints.
+A cheaper model may create additional cost through:
+
+- failed attempts
+- retries
+- escalation to stronger models
+- verification
+- human intervention
+- additional latency
+- downstream business failures
+
+This project therefore explores enterprise AI routing as a **workload allocation and decision-policy problem**.
+
+The objective is not to identify one universally best model. It is to determine which tool or execution strategy is appropriate for each workload given its characteristics, operational constraints, and consequences of failure.
+
+---
 
 ## System Overview
 
@@ -50,6 +70,9 @@ Expected Outcome Estimation
 Constraint-Aware Routing
             |
             v
+Work-Unit / Failure-Aware Routing
+            |
+            v
 Context Retrieval
             |
             v
@@ -59,7 +82,14 @@ Semantic Reranking
 Model / Tool Execution
             |
             v
-Faithfulness + Quality Evaluation
+Verification + Faithfulness Evaluation
+            |
+      +-----+------------------+
+      |                        |
+    Accept              Retry / Escalate
+                               |
+                               v
+                     Stronger Model / Human
             |
             v
 Regression Gates
@@ -71,7 +101,11 @@ Offline / A-B Evaluation
 Production Monitoring + Fallbacks
 ```
 
-The core simulation studies routing behavior. Additional modules explore how retrieval, evaluation, fine-tuning, experimentation, and production safeguards would fit around that routing layer.
+The core simulation studies routing behavior.
+
+Additional modules explore how Work Unit economics, verification, retrieval, evaluation, fine-tuning, experimentation, and production safeguards fit around that routing layer.
+
+---
 
 ## Workload Representation
 
@@ -111,6 +145,8 @@ Task types include:
 - classification
 - extraction
 
+---
+
 ## Tool Portfolio
 
 The simulated execution environment contains five tool classes:
@@ -124,6 +160,8 @@ The simulated execution environment contains five tool classes:
 | Deterministic automation | Non-LLM workflow execution |
 
 Each tool has different simulated performance characteristics across task types, complexity levels, and sensitivity requirements.
+
+---
 
 ## Observability
 
@@ -141,6 +179,8 @@ The framework tracks:
 
 This creates an organization-level view of where AI resources are being consumed and where inefficient allocation may exist.
 
+---
+
 ## Inefficiency Detection
 
 The framework flags patterns such as:
@@ -152,6 +192,8 @@ The framework flags patterns such as:
 - successful executions requiring substantial human correction
 
 These signals are intended as diagnostic indicators rather than definitive judgments about individual tool calls.
+
+---
 
 ## Counterfactual Tool Simulation
 
@@ -187,6 +229,8 @@ The simulated outcomes include:
 - realized latency
 - realized human corrections
 
+---
+
 ## Avoiding Outcome Leakage
 
 An important evaluation correction was made during development.
@@ -215,6 +259,8 @@ Evaluation outcomes
 
 and prevents outcome leakage from artificially improving routing performance.
 
+---
+
 ## Constraint-Aware Routing
 
 For every workload, the router evaluates candidate tools against policy-specific constraints.
@@ -240,6 +286,8 @@ rather than pretending that the workload was successfully covered.
 
 This makes **constraint coverage** an explicit system metric.
 
+---
+
 ## Routing Policies
 
 Four routing strategies are evaluated.
@@ -262,6 +310,8 @@ Applies the strongest operational constraints.
 
 The policies are not assumed to have a fixed ranking. Their behavior depends on whether the available tool portfolio can actually satisfy the requested constraints.
 
+---
+
 ## Corrected Policy Trade-offs
 
 A representative simulation produced:
@@ -283,6 +333,8 @@ This creates a coverage trade-off:
 
 > Increasing policy strictness can increase fallback behavior when the available tool portfolio cannot satisfy the requested operating envelope.
 
+---
+
 ## Multi-Seed Robustness
 
 The balanced routing policy was evaluated across 10 independent simulation seeds.
@@ -302,6 +354,554 @@ The balanced routing policy was evaluated across 10 independent simulation seeds
 Across all tested seeds, the balanced router reduced simulated cost while improving realized success and quality relative to the baseline allocation.
 
 The effect therefore does not depend on a single random seed within the simulated environment.
+
+---
+
+## Work-Unit-Aware Routing
+
+The initial routing framework evaluates which model or tool should handle a workload using expected cost, quality, reliability, latency, correction burden, and operational constraints.
+
+A second set of experiments extends the problem from **model-call economics** to **Work Unit completion economics**.
+
+The central question is:
+
+> **When should an enterprise AI system use a cheaper model first and escalate, and when should it route directly to a stronger model?**
+
+A Work Unit represents a discrete piece of work with attributes including:
+
+- task type
+- complexity
+- sensitivity
+- business value
+- failure cost
+- escalation cost
+
+The routing decision can therefore account for more than inference price.
+
+It considers:
+
+```text
+Model execution cost
+        +
+Escalation overhead
+        +
+Expected unresolved failure cost
+        +
+Verification cost
+        +
+Latency and reliability considerations
+```
+
+All success probabilities, failure costs, escalation costs, and verifier characteristics in these experiments are **synthetic simulation assumptions**.
+
+They are used to study system behavior and decision boundaries rather than represent measured production economics.
+
+---
+
+## Direct Routing vs Cascaded Routing
+
+Three execution strategies are compared:
+
+```text
+Direct Small
+Work Unit
+    |
+    v
+Small Model
+```
+
+```text
+Direct Frontier
+Work Unit
+    |
+    v
+Frontier Model
+```
+
+```text
+Cascade
+Work Unit
+    |
+    v
+Small Model
+    |
+ failure
+    |
+    v
+Frontier Model
+```
+
+For direct execution:
+
+```text
+Expected Total Cost
+    =
+Model Cost
+    +
+P(Failure) × Failure Cost
+```
+
+For the idealized cascade:
+
+```text
+Expected Execution + Escalation Cost
+    =
+Small Model Cost
+    +
+P(Small Failure) × Frontier Cost
+    +
+P(Small Failure) × Escalation Cost
+```
+
+and:
+
+```text
+Expected Failure Cost
+    =
+P(Small Failure)
+× P(Frontier Failure)
+× Failure Cost
+```
+
+This first experiment assumes that failure after the small-model attempt is observable. A later verifier experiment relaxes that assumption and models imperfect failure detection explicitly.
+
+---
+
+## Workload-Dependent Model Capability
+
+A single global success probability for each model is unlikely to represent a heterogeneous enterprise environment.
+
+A smaller model may be highly capable at summarization while substantially weaker at technical reasoning or compliance.
+
+The simulation therefore assigns workload-specific model capability assumptions.
+
+| Work Unit | Small-model success | Frontier success | Failure cost |
+|---|---:|---:|---:|
+| Summarization | 0.90 | 0.97 | $0.01 |
+| Technical reasoning | 0.68 | 0.95 | $0.10 |
+| Compliance | 0.55 | 0.96 | $1.00 |
+
+The idealized cascade experiment produced:
+
+### Summarization
+
+```text
+Direct small
+Expected total cost: $0.0050
+Success probability: 0.900
+
+Direct frontier
+Expected total cost: $0.0183
+Success probability: 0.970
+
+Idealized cascade
+Expected total cost: $0.0060
+Success probability: 0.997
+```
+
+Optimal strategy:
+
+```text
+direct:small_model
+```
+
+### Technical Reasoning
+
+```text
+Direct small
+Expected total cost: $0.0360
+Success probability: 0.680
+
+Direct frontier
+Expected total cost: $0.0230
+Success probability: 0.950
+
+Idealized cascade
+Expected total cost: $0.0178
+Success probability: 0.984
+```
+
+Optimal strategy:
+
+```text
+cascade:small_model->frontier_model
+```
+
+### Compliance
+
+```text
+Direct small
+Expected total cost: $0.4540
+Success probability: 0.550
+
+Direct frontier
+Expected total cost: $0.0580
+Success probability: 0.960
+
+Idealized cascade
+Expected total cost: $0.1201
+Success probability: 0.982
+```
+
+Optimal strategy:
+
+```text
+direct:frontier_model
+```
+
+The experiment therefore produces three routing regimes:
+
+```text
+Low-cost failure
+      |
+      v
+DIRECT SMALL
+
+Intermediate failure / escalation economics
+      |
+      v
+SMALL → FRONTIER CASCADE
+
+High-cost failure
+      |
+      v
+DIRECT FRONTIER
+```
+
+The result demonstrates why neither:
+
+```text
+always use the cheapest model
+```
+
+nor:
+
+```text
+always start cheap and escalate
+```
+
+is universally optimal within the simulation.
+
+---
+
+## Verifier-Aware Cost and Reliability
+
+The idealized cascade is useful for understanding routing economics, but it assumes that the system knows when the small model has failed.
+
+The verifier-aware experiment provides a more realistic comparison by introducing imperfect failure detection.
+
+Using the strong verifier configuration:
+
+| Work Unit | Direct small | Strong verified cascade | Direct frontier | Lowest expected cost |
+|---|---:|---:|---:|---|
+| Summarization | $0.0050 / 90.0% | $0.0083 / 99.2% | $0.0183 / 97.0% | Direct small |
+| Technical reasoning | $0.0360 / 68.0% | $0.0213 / 96.8% | $0.0230 / 95.0% | Verified cascade |
+| Compliance | $0.4540 / 55.0% | $0.1416 / 96.0% | $0.0580 / 96.0% | Direct frontier |
+
+Each cell reports:
+
+```text
+Expected total cost / final success probability
+```
+
+![Cost vs reliability across routing strategies](results/figures/cost_reliability_frontier.png)
+
+The cost-reliability frontier shows why routing decisions depend on the Work Unit.
+
+For summarization, direct-small has the lowest expected total cost, while verified cascading buys substantially higher modeled reliability at additional cost.
+
+For technical reasoning, the strong verified cascade provides slightly higher modeled reliability than direct-frontier at slightly lower expected total cost.
+
+For compliance, direct-frontier dominates the verified cascade on expected cost at the same modeled 96% final success rate.
+
+This comparison makes the broader routing problem explicit: the best strategy depends on both **economic consequences and required reliability**.
+
+---
+
+## Failure-Cost and Escalation-Cost Decision Boundaries
+
+The next experiment asks:
+
+> **Where does the optimal routing policy change as failure and escalation become more expensive?**
+
+To isolate failure and escalation economics, this sweep uses fixed small-model and frontier-model capability assumptions and the idealized cascade.
+
+Failure costs are swept across:
+
+```text
+0.00
+0.01
+0.02
+0.05
+0.10
+0.20
+0.50
+1.00
+2.00
+```
+
+Escalation cost is modeled as a percentage of failure cost:
+
+```text
+0%
+5%
+10%
+20%
+30%
+```
+
+The experiment reveals distinct policy transitions.
+
+At a 20% escalation-cost ratio, for example, the tested grid produced:
+
+```text
+Low failure cost
+      |
+      v
+Direct Small
+
+around $0.05
+      |
+      v
+Cascade
+
+around $0.50
+      |
+      v
+Direct Frontier
+```
+
+These values are **observed switch points in the tested simulation grid**, not exact analytical thresholds or universal routing rules.
+
+![Optimal routing strategy by Work Unit economics](results/figures/work_unit_decision_map.png)
+
+The decision map makes the routing regimes explicit. As the cost of unresolved failure and escalation increases, the optimal strategy shifts from direct-small to cascade and eventually to direct-frontier within the simulated environment.
+
+The experiment also exposed an important modeling issue.
+
+Without an escalation penalty, cascades can appear unrealistically attractive because a failed first attempt has almost no operational consequence if the fallback eventually succeeds.
+
+Explicitly modeling escalation overhead changes the decision boundary and allows direct-frontier routing to become optimal for sufficiently expensive failures.
+
+---
+
+## Robustness to Model-Performance Uncertainty
+
+Routing decisions depend on estimated model success probabilities.
+
+Those estimates will never be perfectly known in a production system.
+
+The framework therefore tests:
+
+> **What happens if the router's model-performance estimates are wrong?**
+
+Both small-model and frontier-model success estimates are independently perturbed by:
+
+```text
+-10 percentage points
+ -5 percentage points
+  0 percentage points
+ +5 percentage points
++10 percentage points
+```
+
+This creates 25 performance combinations per workload.
+
+Results:
+
+| Work Unit | Base Strategy | Strategy Stability |
+|---|---|---:|
+| Summarization | Direct small | 100% |
+| Technical reasoning | Cascade | 92% |
+| Compliance | Direct frontier | 92% |
+
+For summarization, direct-small remained optimal in all 25 perturbation scenarios.
+
+For technical reasoning:
+
+```text
+Cascade          23 / 25 = 92%
+Direct frontier   2 / 25 = 8%
+```
+
+For compliance:
+
+```text
+Direct frontier  23 / 25 = 92%
+Cascade            2 / 25 = 8%
+```
+
+The policy flips are useful diagnostic information.
+
+They identify workloads close to a routing decision boundary where small errors in capability estimation can change the selected strategy.
+
+A production router could use this information to trigger:
+
+- conservative routing
+- additional evaluation
+- improved calibration
+- more telemetry collection
+- human review for high-risk decisions
+
+Routing therefore has two related questions:
+
+```text
+Which strategy has the best expected outcome?
+
+and
+
+How stable is that decision to estimation uncertainty?
+```
+
+This experiment is a deterministic sensitivity analysis over assumed point estimates rather than a statistical uncertainty estimate.
+
+---
+
+## Imperfect Failure Detection
+
+The basic cascade contains an unrealistic assumption:
+
+> The system knows when the first model failed.
+
+Real LLM systems usually do not expose a clean success or failure signal.
+
+An incorrect response may still be fluent, plausible, and highly confident.
+
+The framework therefore introduces an imperfect verifier.
+
+The verifier is characterized by:
+
+### Sensitivity
+
+```text
+P(verifier flags response | response is actually bad)
+```
+
+### Specificity
+
+```text
+P(verifier accepts response | response is actually good)
+```
+
+This creates two important error types.
+
+### False Negative
+
+```text
+Bad response
+     |
+     v
+Verifier accepts
+     |
+     v
+Unresolved failure
+```
+
+### False Positive
+
+```text
+Good response
+     |
+     v
+Verifier flags
+     |
+     v
+Unnecessary escalation
+```
+
+False negatives increase downstream failure risk.
+
+False positives increase model cost, escalation overhead, and latency.
+
+---
+
+## Verifier Profiles
+
+Three synthetic verifier profiles are evaluated:
+
+| Verifier | Sensitivity | Specificity |
+|---|---:|---:|
+| Weak | 0.70 | 0.90 |
+| Moderate | 0.85 | 0.95 |
+| Strong | 0.95 | 0.98 |
+
+Verification itself has an assumed cost of:
+
+```text
+$0.002 per Work Unit
+```
+
+These verifier characteristics are synthetic assumptions rather than empirically measured classifier performance.
+
+---
+
+## Verification Results
+
+### Summarization
+
+| Verifier | Accepted bad rate | Escalation rate | Final success | Expected total cost |
+|---|---:|---:|---:|---:|
+| Weak | 3.0% | 16.0% | 96.5% | $0.0095 |
+| Moderate | 1.5% | 13.0% | 98.1% | $0.0088 |
+| Strong | 0.5% | 11.3% | 99.2% | $0.0083 |
+
+### Technical Reasoning
+
+| Verifier | Accepted bad rate | Escalation rate | Final success | Expected total cost |
+|---|---:|---:|---:|---:|
+| Weak | 9.6% | 29.2% | 88.9% | $0.0282 |
+| Moderate | 4.8% | 30.6% | 93.7% | $0.0240 |
+| Strong | 1.6% | 31.8% | 96.8% | $0.0213 |
+
+### Compliance
+
+| Verifier | Accepted bad rate | Escalation rate | Final success | Expected total cost |
+|---|---:|---:|---:|---:|
+| Weak | 13.5% | 37.0% | 85.0% | $0.2365 |
+| Moderate | 6.8% | 41.0% | 91.6% | $0.1793 |
+| Strong | 2.3% | 43.8% | 96.0% | $0.1416 |
+
+![Verification economics](results/figures/verifier_economics.png)
+
+Verification quality changes both reliability and Work Unit economics.
+
+Stronger verification reduces accepted bad responses across all three workloads, with the largest economic effect appearing in compliance because unresolved failures carry a substantially higher simulated cost.
+
+The compliance workload exposes the strongest verifier trade-off.
+
+For the strong verifier:
+
+```text
+Expected inference cost:     $0.0119
+Expected escalation cost:    $0.0877
+Expected verification cost:  $0.0020
+Expected failure cost:       $0.0400
+Expected total cost:         $0.1416
+```
+
+The strong verifier causes **more escalation** because it catches more genuine small-model failures.
+
+That raises execution and escalation spending.
+
+However, the accepted bad-response rate falls from:
+
+```text
+13.5% → 2.3%
+```
+
+and expected failure cost falls enough to reduce overall expected Work Unit cost relative to weaker verifier configurations.
+
+This illustrates an important system-level result:
+
+> **Higher model usage or escalation is not necessarily inefficient if the additional execution prevents sufficiently expensive failures.**
+
+However, better verification does not imply that a verified cascade is the optimal routing strategy.
+
+For compliance, the strong verified cascade still costs approximately `$0.1416`, compared with `$0.0580` for direct-frontier execution under the base assumptions.
+
+That result reinforces the value of jointly optimizing routing and verification rather than optimizing either component independently.
+
+---
 
 ## Retrieval and Semantic Reranking
 
@@ -323,6 +923,8 @@ On the current five-query diagnostic benchmark:
 The semantic reranker moved the relevant document to rank one for the ambiguous cases, increasing MRR while retrieval coverage remained unchanged.
 
 The benchmark is intentionally small and synthetic. The result demonstrates the behavior of the retrieval/reranking pipeline rather than establishing a generalized performance improvement.
+
+---
 
 ## Faithfulness Evaluation
 
@@ -359,6 +961,8 @@ This separates two different questions:
 
 The adversarial contradiction that passed the similarity-only evaluator is rejected by the NLI-enhanced evaluator.
 
+---
+
 ## Regression Testing
 
 AI-system changes can improve one metric while silently degrading another.
@@ -391,9 +995,13 @@ In the diagnostic regression suite, one candidate is rejected specifically becau
 
 The tolerance values in the repository are illustrative. In production they would be derived from service-level requirements, business risk, and empirical metric variance.
 
+---
+
 ## Fine-Tuning Experiment
 
 The repository includes a small transfer-learning experiment using `distilbert-base-uncased` for enterprise workload classification.
+
+This is an encoder classification fine-tuning experiment rather than generative LLM instruction tuning.
 
 The classifier predicts four workload categories:
 
@@ -417,8 +1025,6 @@ Results:
 |---|---:|---:|
 | Accuracy | 0.250 | 0.688 |
 | Macro F1 | 0.105 | 0.657 |
-
-Per-class evaluation showed that technical workloads were easiest to identify, while general workloads were more frequently confused with technical tasks.
 
 Sensitive-workload classification showed:
 
@@ -451,6 +1057,8 @@ The threshold was intentionally not tuned against the test set to manufacture a 
 A production implementation would use separate validation data for threshold selection and would evaluate probability calibration before relying on confidence for routing or abstention.
 
 This experiment demonstrates the fine-tuning and evaluation workflow. It is not intended as evidence of production-level classifier performance.
+
+---
 
 ## Simulated A/B Experimentation
 
@@ -501,6 +1109,8 @@ Because treatment and control outcomes are generated from assumed distributions,
 
 The experiment demonstrates the randomized evaluation and analysis framework that could be applied to real production traffic.
 
+---
+
 ## Production Architecture
 
 The repository includes a production-oriented design for extending the offline framework into an enterprise AI execution system.
@@ -520,16 +1130,24 @@ Context Retrieval
 Semantic Reranking
       |
       v
-Constraint-Aware Routing
+Constraint + Work-Unit-Aware Routing
       |
       v
 Model / Tool Execution
       |
       v
-Faithfulness + Quality Evaluation
+Verification + Faithfulness Evaluation
+      |
+      +--> Accept
+      |
+      +--> Retry
+      |
+      +--> Escalate to Stronger Model
+      |
+      +--> Human Review
       |
       v
-Response / Human Escalation
+Response
       |
       v
 Telemetry + Monitoring
@@ -545,11 +1163,16 @@ The architecture explicitly considers:
 - provider timeouts
 - provider outages
 - faithfulness failures
+- verifier uncertainty
 - sensitivity restrictions
+- failed model attempts
+- escalation overhead
 
 Low-confidence or unsupported decisions can be escalated rather than forcing the system to return a result.
 
 Provider failures can trigger retries, alternate eligible providers, or circuit breakers.
+
+High-risk Work Units can bypass cheap-first execution entirely when the expected cost of failure or escalation makes direct frontier execution preferable.
 
 ### Deployment Strategy
 
@@ -573,7 +1196,7 @@ Randomized A/B Test
 Gradual Rollout
 ```
 
-Task success can serve as a primary outcome while faithfulness, latency, cost, human correction, and sensitive-data violations act as guardrails.
+Task success can serve as a primary outcome while faithfulness, latency, cost, human correction, accepted bad-response rate, and sensitive-data violations act as guardrails.
 
 ### Versioning and Rollback
 
@@ -586,7 +1209,10 @@ The design therefore assumes versioning for:
 - prompts
 - retrievers
 - rerankers
+- verifier configurations
 - evaluation configurations
+- classifier versions
+- confidence thresholds
 
 A detected regression can roll traffic back to a known-good configuration.
 
@@ -595,6 +1221,8 @@ The complete design is documented in:
 ```text
 docs/production_architecture.md
 ```
+
+---
 
 ## Where Routing Breaks Down
 
@@ -614,6 +1242,8 @@ High-complexity and high-sensitivity workloads are substantially more difficult 
 This suggests that routing optimization alone cannot solve every workload allocation problem.
 
 Sometimes the limiting factor is the **capability frontier of the available tools**, not the routing policy.
+
+---
 
 ## Key Findings
 
@@ -650,29 +1280,87 @@ better tool coverage
 
 A sophisticated router cannot compensate indefinitely for missing capabilities in the underlying tool portfolio.
 
-### 6. Retrieval coverage and ranking quality are different
+### 6. The cheapest request is not necessarily the cheapest completed Work Unit
+
+Once failure and escalation costs are modeled, cheap-first routing is not universally optimal.
+
+The simulation produced three regimes:
+
+```text
+Summarization       → Direct small
+Technical reasoning → Small → frontier
+Compliance          → Direct frontier
+```
+
+### 7. Escalation economics change routing decisions
+
+Without explicit escalation cost, cascades can appear unrealistically attractive.
+
+As failure and escalation costs increase, the optimal policy can move from:
+
+```text
+Direct small
+      ↓
+Cascade
+      ↓
+Direct frontier
+```
+
+### 8. Routing decisions should be evaluated for stability
+
+Perturbing model success probabilities produced:
+
+```text
+Summarization       100% base-policy stability
+Technical reasoning  92% base-policy stability
+Compliance            92% base-policy stability
+```
+
+This provides a way to identify decisions near a policy boundary.
+
+### 9. Verification is part of the routing problem
+
+A cascade only works if the system can determine when escalation is necessary.
+
+Modeling imperfect verification showed that false negatives create downstream failure risk while false positives create unnecessary escalation.
+
+### 10. More escalation is not automatically inefficient
+
+For high-risk compliance work, the strong verifier escalated more often but reduced accepted bad responses from **13.5% to 2.3%** and expected total cost from **$0.2365 to $0.1416** relative to the weak verifier.
+
+The additional execution was justified by the reduction in expensive unresolved failures within the simulation.
+
+### 11. Routing and verification must be optimized jointly
+
+A stronger verifier improved the compliance cascade, but the resulting `$0.1416` expected total cost was still substantially higher than the `$0.0580` direct-frontier alternative.
+
+Improving one component of an AI execution pipeline does not necessarily make the overall strategy optimal.
+
+### 12. Retrieval coverage and ranking quality are different
 
 The retrieval benchmark maintained perfect Recall@3 while semantic reranking improved MRR from 0.800 to 1.000.
 
 The retriever had already found the relevant documents. The remaining problem was ordering them correctly.
 
-### 7. Semantic similarity is not faithfulness
+### 13. Semantic similarity is not faithfulness
 
 Embedding similarity can identify related evidence without establishing whether the evidence entails or contradicts a claim.
 
 Faithfulness evaluation therefore requires stronger checks than semantic proximity alone.
 
-### 8. AI regressions are multidimensional
+### 14. AI regressions are multidimensional
 
 A candidate configuration should not be considered better simply because an aggregate score improves.
 
 Critical dimensions such as faithfulness, latency, cost, and sensitive-data handling require independent guardrails.
 
-### 9. Fine-tuning and calibration solve different problems
+### 15. Fine-tuning and calibration solve different problems
 
 Fine-tuning substantially improved workload classification on the diagnostic dataset, but confidence remained low.
 
 Production systems therefore need explicit calibration and abstention strategies rather than assuming prediction confidence is trustworthy.
+
+---
 
 ## Reproducing the Experiments
 
@@ -689,7 +1377,7 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-### Core routing simulation
+### Core Routing Simulation
 
 Generate the synthetic workload dataset:
 
@@ -745,49 +1433,86 @@ Run the multi-seed robustness experiment:
 python -m experiments.multi_seed
 ```
 
-### Retrieval benchmark
+### Work-Unit Routing Experiment
+
+Compare direct-small, direct-frontier, and idealized cascaded execution:
+
+```bash
+python -m experiments.work_unit_routing_experiment
+```
+
+### Work-Unit Decision-Boundary Sweep
+
+Sweep failure cost and escalation overhead:
+
+```bash
+python -m experiments.work_unit_threshold_sweep
+```
+
+### Routing Uncertainty Sweep
+
+Perturb model-performance assumptions and measure policy stability:
+
+```bash
+python -m experiments.work_unit_uncertainty_sweep
+```
+
+### Imperfect Verifier Experiment
+
+Evaluate cascade behavior under different verifier sensitivity and specificity assumptions:
+
+```bash
+python -m experiments.verifier_routing_experiment
+```
+
+### Retrieval Benchmark
 
 ```bash
 python -m experiments.retrieval_benchmark
 ```
 
-### Faithfulness benchmark
+### Faithfulness Benchmark
 
 ```bash
 python -m experiments.faithfulness_benchmark
 ```
 
-### Regression suite
+### Regression Suite
 
 ```bash
 python -m experiments.regression_suite
 ```
 
-### Fine-tuning experiment
+### Fine-Tuning Experiment
 
 ```bash
 python -m experiments.train_fine_tuned_model
 ```
 
-### Fine-tuning strategy benchmark
+### Fine-Tuning Strategy Benchmark
 
 ```bash
 python -m experiments.fine_tuning_benchmark
 ```
 
-### Simulated A/B experiment
+### Simulated A/B Experiment
 
 ```bash
 python -m experiments.ab_routing_experiment
 ```
 
-### Generate figures
+### Generate Figures
 
 ```bash
 python -m src.visualization.routing_impact
 python -m src.visualization.policy_tradeoffs
 python -m src.visualization.constraint_failures
+python -m src.visualization.work_unit_decision_map
+python -m src.visualization.cost_reliability_frontier
+python -m src.visualization.verifier_economics
 ```
+
+---
 
 ## Project Structure
 
@@ -800,7 +1525,8 @@ enterprise-ai-workload-intelligence/
 │       └── test.jsonl
 │
 ├── docs/
-│   └── production_architecture.md
+│   ├── production_architecture.md
+│   └── research_questions.md
 │
 ├── experiments/
 │   ├── ab_routing_experiment.py
@@ -810,13 +1536,20 @@ enterprise-ai-workload-intelligence/
 │   ├── policy_tradeoffs.py
 │   ├── regression_suite.py
 │   ├── retrieval_benchmark.py
-│   └── train_fine_tuned_model.py
+│   ├── train_fine_tuned_model.py
+│   ├── verifier_routing_experiment.py
+│   ├── work_unit_routing_experiment.py
+│   ├── work_unit_threshold_sweep.py
+│   └── work_unit_uncertainty_sweep.py
 │
 ├── results/
 │   └── figures/
 │       ├── constraint_failures.png
+│       ├── cost_reliability_frontier.png
 │       ├── policy_tradeoffs.png
-│       └── routing_impact.png
+│       ├── routing_impact.png
+│       ├── verifier_economics.png
+│       └── work_unit_decision_map.png
 │
 ├── src/
 │   ├── evaluation/
@@ -841,12 +1574,16 @@ enterprise-ai-workload-intelligence/
 │   │
 │   ├── simulation/
 │   │   ├── compare_policies.py
-│   │   └── counterfactuals.py
+│   │   ├── counterfactuals.py
+│   │   └── work_unit.py
 │   │
 │   ├── visualization/
 │   │   ├── constraint_failures.py
+│   │   ├── cost_reliability_frontier.py
 │   │   ├── policy_tradeoffs.py
-│   │   └── routing_impact.py
+│   │   ├── routing_impact.py
+│   │   ├── verifier_economics.py
+│   │   └── work_unit_decision_map.py
 │   │
 │   └── workloads/
 │       ├── generate_synthetic.py
@@ -858,6 +1595,8 @@ enterprise-ai-workload-intelligence/
 └── requirements.txt
 ```
 
+---
+
 ## Limitations
 
 This project is a **simulation and evaluation framework**, not a production benchmark of ChatGPT, Claude, Codex, or any other model.
@@ -868,7 +1607,32 @@ Therefore, results such as the 20.7% average cost reduction should be interprete
 
 The counterfactual outcomes are simulated rather than observed from repeated execution of identical tasks across real models.
 
-The A/B experiment is also simulated. Its treatment effect is generated from assumed outcome distributions and should not be interpreted as an empirically measured causal effect.
+The Work Unit experiments also use synthetic assumptions for:
+
+- workload-specific model success probabilities
+- failure costs
+- escalation costs
+- verification costs
+- verifier sensitivity
+- verifier specificity
+
+The dollar-denominated values in these experiments are illustrative simulation inputs rather than measured business costs.
+
+The threshold-sweep results identify policy switches on a finite simulation grid. They should not be interpreted as exact analytical thresholds or general decision rules.
+
+The uncertainty sweep perturbs assumed success probabilities by fixed amounts. It demonstrates policy sensitivity but does not represent a statistically estimated distribution over model performance.
+
+The verifier experiment assumes known sensitivity and specificity values. A production system would need to estimate and continuously monitor these characteristics on representative labeled workloads.
+
+The verifier-aware cascade assumes that an escalated frontier response replaces the original small-model response. It also uses the supplied frontier success probability after escalation. In a real system, workloads that defeat the smaller model may be disproportionately difficult for the frontier model as well, so conditional fallback performance may differ from marginal frontier performance.
+
+Verifier latency is not currently included in the Work Unit economics.
+
+The direct-frontier comparison does not currently add a separate verification step. In a production environment where high-risk frontier outputs also require mandatory verification, that cost and reliability effect should be included in the comparison.
+
+The current Work Unit objective focuses primarily on execution, escalation, verification, and unresolved failure economics. A production policy would also enforce explicit quality, latency, sensitivity, governance, and reliability constraints when comparing strategies.
+
+The A/B experiment is simulated. Its treatment effect is generated from assumed outcome distributions and should not be interpreted as an empirically measured causal effect.
 
 The retrieval benchmark contains only five synthetic diagnostic queries. Its MRR improvement demonstrates the behavior of the reranking implementation but does not establish generalized retrieval performance.
 
@@ -880,11 +1644,21 @@ The regression tolerances are also illustrative. Production thresholds should be
 
 A production extension would replace simulated outcomes with telemetry from actual enterprise AI workloads and empirical model evaluations.
 
+---
+
 ## Future Work
 
 Potential extensions include:
 
 - calibration from real production telemetry
+- empirical workload-specific model success estimation
+- conditional fallback-performance estimation
+- learned failure-cost models
+- workload-specific verifier selection
+- verifier calibration from labeled outcomes
+- verifier latency modeling
+- verification requirements for direct-frontier execution
+- explicit quality and reliability constraints in Work Unit optimization
 - larger and independently labeled retrieval benchmarks
 - dense first-stage retrieval
 - learned hybrid lexical-dense retrieval
@@ -893,16 +1667,19 @@ Potential extensions include:
 - workload-specific abstention thresholds
 - learned routing policies
 - contextual bandits for adaptive tool selection
-- uncertainty-aware routing
-- workload-specific model benchmarking
+- probabilistic uncertainty estimates rather than fixed perturbation sweeps
 - budget-aware optimization
 - dynamic model pricing
 - queue and capacity constraints
+- provider-load-aware routing
 - privacy and data-residency policies
-- human escalation policies
+- explicit human escalation policies
+- human-review cost and latency modeling
 - online monitoring for routing drift
 - empirical shadow-mode evaluation
 - production A/B experimentation
+
+---
 
 ## Why This Project Matters
 
@@ -916,8 +1693,32 @@ to:
 
 > **Which model, tool, or workflow should handle this task under the organization's actual constraints?**
 
-That decision cannot be made from model quality alone.
+and, increasingly:
 
-It depends on workload characteristics, organizational context, retrieval quality, sensitivity, cost, latency, reliability, confidence, and the consequences of failure.
+> **What is the most efficient and reliable way to complete this Work Unit once failures, verification, retries, escalation, and downstream consequences are included?**
 
-This project provides an experimental framework for studying those decisions across the lifecycle from workload characterization and routing through retrieval, evaluation, experimentation, and production safeguards.
+That decision cannot be made from model quality or inference price alone.
+
+It depends on:
+
+- workload characteristics
+- model capability for that workload
+- organizational context
+- retrieval quality
+- sensitivity
+- cost
+- latency
+- reliability
+- confidence
+- verification quality
+- escalation overhead
+- uncertainty
+- consequences of failure
+
+The experiments show why routing, verification, and evaluation should not be treated as independent components.
+
+A cheap model can be the correct choice for one Work Unit, a cheap-to-frontier cascade can be appropriate for another, and direct-frontier execution can be economically preferable for sufficiently high-risk work.
+
+The goal of this project is therefore not simply to minimize AI spend.
+
+It is to provide an experimental framework for studying **how enterprise AI systems allocate intelligence to complete work reliably and efficiently**, from workload characterization and routing through retrieval, verification, evaluation, experimentation, and production safeguards.
