@@ -7,3 +7,5 @@ scipy
 sentence-transformers
 transformers
 torch
+peft
+accelerate

@@ -1,0 +1,26 @@
+[
+  {
+    "id": "summarization",
+    "text": "Summarization means condensing or recapping existing content without creating substantially new material. Routine, non-sensitive summarization is low sensitivity and low risk and should use direct_small."
+  },
+  {
+    "id": "retrieval",
+    "text": "Retrieval means locating or finding authoritative information in documentation, policies, handbooks, or knowledge bases. Internal retrieval is medium sensitivity and medium risk and should use verified_cascade. Words such as privileged, critical, authoritative, or infrastructure do not by themselves make the task high risk."
+  },
+  {
+    "id": "technical_reasoning",
+    "text": "Technical reasoning means diagnosing, analyzing, debugging, or reasoning about technical systems. Ordinary debugging is medium sensitivity and medium risk and should use verified_cascade. Technical reasoning becomes high risk and direct_frontier when failure could corrupt financial records or create similarly severe consequences."
+  },
+  {
+    "id": "compliance",
+    "text": "Compliance means assessing legal, regulatory, contractual, privacy, retention, or data-governance obligations. Compliance workloads are high sensitivity and high risk and should use direct_frontier."
+  },
+  {
+    "id": "classification",
+    "text": "Classification means assigning content to predefined labels, topics, categories, or taxonomies. Routine classification of non-sensitive information is low sensitivity and low risk and should use direct_small."
+  },
+  {
+    "id": "generation",
+    "text": "Generation means creating substantially new content rather than summarizing existing material. Routine non-sensitive generation should use direct_small. Customer-facing content requiring review is medium sensitivity and medium risk and should use verified_cascade. Sensitive executive, financial, legal, or regulatory communications are high sensitivity and high risk and should use direct_frontier."
+  }
+]
