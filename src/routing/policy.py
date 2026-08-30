@@ -162,7 +162,7 @@ def select_tool(group, policy="balanced"):
     feasible = group[
     (group["allowed"])
     & (
-        group["quality_score"]
+        group["expected_quality"]
         >= constraints["min_quality"]
     )
     & (
@@ -170,11 +170,11 @@ def select_tool(group, policy="balanced"):
         >= constraints["min_success_probability"]
     )
     & (
-        group["human_corrections"]
+        group["expected_corrections"]
         <= constraints["max_corrections"]
     )
     & (
-        group["latency_ms"]
+        group["expected_latency_ms"]
         <= constraints["max_latency_ms"]
     )
 ]

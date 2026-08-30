@@ -43,6 +43,8 @@ A medium-sensitivity technical reasoning workload uses a verified cascade, allow
 ![Verified Cascade Routing](assets/routing_verified_cascade.png)
 
 **Routing decision:** `verified_cascade`
+
+
 ---
 
 ## Research Questions
@@ -277,10 +279,10 @@ Representative results:
 
 | Policy | Cost change | Success | Quality | Latency change | Correction change | Frontier usage | Constraint satisfaction |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Cost optimized | -42.8% | 0.928 | 0.871 | -21.4% | -24.8% | 26.4% | 77.6% |
-| Balanced | -20.2% | 0.908 | 0.860 | -9.0% | -23.3% | 36.8% | 53.2% |
-| Reliability first | -2.6% | 0.904 | 0.857 | +1.1% | -27.9% | 44.8% | 36.0% |
-| Strict | -0.6% | 0.904 | 0.855 | +2.0% | -26.7% | 46.0% | 23.2% |
+| Cost optimized | -47.6% | 0.884 | 0.843 | -23.9% | -14.8% | 20.4% | 74.0% |
+| Balanced | -26.0% | 0.932 | 0.861 | -13.6% | -25.0% | 30.0% | 48.0% |
+| Reliability first | +2.1% | 0.952 | 0.872 | +1.0% | -24.1% | 44.8% | 8.0% |
+| Strict | +2.1% | 0.952 | 0.872 | +1.0% | -24.1% | 44.8% | 8.0% |
 
 ![Policy tradeoffs](results/figures/policy_tradeoffs.png)
 
@@ -298,12 +300,13 @@ The balanced routing policy is therefore evaluated across multiple seeds.
 
 Across 10 representative simulation seeds, the balanced policy produced approximately:
 
-- **20.7% average cost reduction**
-- **17.6 percentage-point increase in task success**
-- **0.084 increase in average quality**
-- **8.4% lower latency**
-- **28.3% fewer human corrections**
-- **6.4 percentage-point reduction in frontier-model usage**
+- **27.0% average cost reduction**
+- **14.6 percentage-point increase in task success**
+- **0.063 increase in average quality**
+- **12.2% lower latency**
+- **19.8% fewer human corrections**
+- **11.1 percentage-point reduction in frontier-model usage**
+- **48.0% average constraint satisfaction**
 
 ![Routing impact](results/figures/routing_impact.png)
 
@@ -1213,8 +1216,8 @@ For the analyzed balanced-policy run:
 
 | Workload characteristic | Low | Medium | High |
 |---|---:|---:|---:|
-| Complexity fallback rate | 27.2% | 34.0% | 89.3% |
-| Sensitivity fallback rate | 25.0% | 35.6% | 78.3% |
+| Complexity fallback rate | 25.9% | 36.2% | 100.0% |
+| Sensitivity fallback rate | 23.5% | 35.6% | 89.1% |
 
 ![Constraint failures](results/figures/constraint_failures.png)
 
@@ -1230,16 +1233,16 @@ Sometimes the limiting factor is the **capability frontier of the available tool
 
 ### 1. Workload-aware routing can outperform static allocation within the simulation
 
-Across 10 simulation seeds, the balanced routing policy reduced simulated cost by an average of **20.7%** while increasing task success by **17.6 percentage points**.
+Across 10 simulation seeds, the balanced routing policy reduced simulated cost by an average of **27.0%** while increasing task success by **14.6 percentage points**.
 
 ### 2. Improvements extend beyond cost
 
 The balanced policy also produced:
 
-- **8.4% lower latency**
-- **28.3% fewer human corrections**
-- **0.084 higher average quality**
-- **6.4 percentage-point lower frontier-model usage**
+- **12.2% lower latency**
+- **19.8% fewer human corrections**
+- **0.063 higher average quality**
+- **11.1 percentage-point lower frontier-model usage**
 
 ### 3. More restrictive policies are not necessarily better
 
@@ -1584,7 +1587,7 @@ This project is a **simulation and evaluation framework**, not a production benc
 
 Tool behavior, cost, latency, quality, and reliability in the core routing experiments are synthetically generated according to assumptions encoded in the simulation.
 
-Therefore, results such as the 20.7% average cost reduction should be interpreted as evidence about the behavior of the routing framework **within the simulated environment**, not as expected savings from deploying the system in a real organization.
+Therefore, results such as the 27.0% average cost reduction should be interpreted as evidence about the behavior of the routing framework **within the simulated environment**, not as expected savings from deploying the system in a real organization.
 
 The counterfactual outcomes are simulated rather than observed from repeated execution of identical tasks across real models.
 
