@@ -157,3 +157,60 @@ def test_selector_falls_back_when_history_is_sparse(
 
     assert decision.strategy == "verified_cascade"
     assert decision.source == "fallback_policy"
+
+def test_selector_exposes_telemetry_match_level(
+    tmp_path,
+):
+    store = TelemetryStore(
+        str(tmp_path / "events.jsonl")
+    )
+
+    complexities = [
+        "low",
+        "low",
+        "medium",
+        "medium",
+        "high",
+        "high",
+    ]
+
+    for i, complexity in enumerate(complexities):
+        store.log(
+            TelemetryEvent(
+                workload_id=f"backoff-{i}",
+                task_type="reasoning",
+                complexity=complexity,
+                sensitivity="medium",
+                strategy="direct_small",
+                model="test-model",
+                latency_ms=1000.0,
+                input_tokens=100,
+                output_tokens=50,
+                total_tokens=150,
+                escalated=False,
+                verification_passed=None,
+                verification_confidence=None,
+                estimated_cost_usd=0.005,
+                success=True,
+            )
+        )
+
+    estimator = TelemetryEstimator(
+        store=store,
+        min_samples=5,
+    )
+
+    selector = StrategySelector(
+        estimator=estimator,
+    )
+
+    decision = selector.select(
+        task_type="reasoning",
+        complexity="high",
+        sensitivity="medium",
+    )
+
+    assert decision.strategy == "direct_small"
+    assert decision.source == "observed_telemetry"
+    assert decision.match_level == "task_and_sensitivity"
+    assert decision.sample_count == 6

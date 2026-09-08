@@ -19,6 +19,7 @@ class StrategyDecision:
     success_probability: float | None
     expected_latency_ms: float | None
     estimated_cost_usd: float | None
+    match_level: str | None = None
 
 
 class StrategySelector:
@@ -89,6 +90,7 @@ class StrategySelector:
             success_probability=fallback_prior.success_probability,
             expected_latency_ms=fallback_prior.expected_latency_ms,
             estimated_cost_usd=fallback_prior.estimated_cost_usd,
+            match_level=fallback_prior.match_level,
         )
 
     def _meets_constraints(
@@ -156,4 +158,5 @@ class StrategySelector:
             success_probability=prior.success_probability,
             expected_latency_ms=prior.expected_latency_ms,
             estimated_cost_usd=prior.estimated_cost_usd,
+            match_level=prior.match_level,
         )
