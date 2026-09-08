@@ -1,7 +1,13 @@
 from dataclasses import dataclass
 
+from src.telemetry.confidence import (
+    calculate_evidence_confidence,
+)
 from src.telemetry.estimator import TelemetryEstimator
-from src.telemetry.prior import RoutingPrior, build_routing_prior
+from src.telemetry.prior import (
+    RoutingPrior,
+    build_routing_prior,
+)
 
 
 STRATEGIES = [
@@ -20,6 +26,8 @@ class StrategyDecision:
     expected_latency_ms: float | None
     estimated_cost_usd: float | None
     match_level: str | None = None
+    success_sample_count: int = 0
+    conservative_success_probability: float | None = None
 
 
 class StrategySelector:
@@ -83,25 +91,25 @@ class StrategySelector:
 
         fallback_prior = priors[fallback_strategy]
 
-        return StrategyDecision(
+        return self._decision(
             strategy=fallback_strategy,
+            prior=fallback_prior,
             source="fallback_policy",
-            sample_count=fallback_prior.sample_count,
-            success_probability=fallback_prior.success_probability,
-            expected_latency_ms=fallback_prior.expected_latency_ms,
-            estimated_cost_usd=fallback_prior.estimated_cost_usd,
-            match_level=fallback_prior.match_level,
         )
 
     def _meets_constraints(
         self,
         prior: RoutingPrior,
     ) -> bool:
-        if prior.success_probability is None:
+        confidence = calculate_evidence_confidence(
+            prior
+        )
+
+        if confidence is None:
             return False
 
         if (
-            prior.success_probability
+            confidence.lower_success_bound
             < self.min_success_probability
         ):
             return False
@@ -150,13 +158,29 @@ class StrategySelector:
     def _decision(
         strategy: str,
         prior: RoutingPrior,
+        source: str | None = None,
     ) -> StrategyDecision:
+        confidence = calculate_evidence_confidence(
+            prior
+        )
+
+        conservative_success_probability = None
+
+        if confidence is not None:
+            conservative_success_probability = (
+                confidence.lower_success_bound
+            )
+
         return StrategyDecision(
             strategy=strategy,
-            source=prior.source,
+            source=source or prior.source,
             sample_count=prior.sample_count,
             success_probability=prior.success_probability,
             expected_latency_ms=prior.expected_latency_ms,
             estimated_cost_usd=prior.estimated_cost_usd,
             match_level=prior.match_level,
+            success_sample_count=prior.success_sample_count,
+            conservative_success_probability=(
+                conservative_success_probability
+            ),
         )

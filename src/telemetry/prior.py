@@ -11,6 +11,7 @@ class RoutingPrior:
     source: str
     sample_count: int
     match_level: str | None = None
+    success_sample_count: int = 0
 
 
 def build_routing_prior(
@@ -35,6 +36,7 @@ def build_routing_prior(
             source="fallback",
             sample_count=0,
             match_level=None,
+            success_sample_count=0,
         )
 
     return RoutingPrior(
@@ -44,4 +46,5 @@ def build_routing_prior(
         source="observed_telemetry",
         sample_count=estimate.sample_count,
         match_level=estimate.match_level,
+        success_sample_count=estimate.success_sample_count,
     )

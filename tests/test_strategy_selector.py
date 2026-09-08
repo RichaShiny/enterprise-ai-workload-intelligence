@@ -44,8 +44,8 @@ def test_selector_chooses_cheapest_feasible_strategy(
     log_events(
         store,
         strategy="direct_small",
-        count=6,
-        success_count=6,
+        count=20,
+        success_count=20,
         latency_ms=1000,
         cost_usd=0.005,
     )
@@ -53,8 +53,8 @@ def test_selector_chooses_cheapest_feasible_strategy(
     log_events(
         store,
         strategy="direct_frontier",
-        count=6,
-        success_count=6,
+        count=20,
+        success_count=20,
         latency_ms=2000,
         cost_usd=0.020,
     )
@@ -62,8 +62,8 @@ def test_selector_chooses_cheapest_feasible_strategy(
     log_events(
         store,
         strategy="verified_cascade",
-        count=6,
-        success_count=6,
+        count=20,
+        success_count=20,
         latency_ms=1500,
         cost_usd=0.010,
     )
@@ -85,7 +85,10 @@ def test_selector_chooses_cheapest_feasible_strategy(
 
     assert decision.strategy == "direct_small"
     assert decision.source == "observed_telemetry"
-    assert decision.sample_count == 6
+    assert decision.sample_count == 20
+    assert decision.success_sample_count == 20
+    assert decision.conservative_success_probability is not None
+    assert decision.conservative_success_probability >= 0.80
 
 
 def test_selector_rejects_unreliable_strategy(
@@ -98,8 +101,8 @@ def test_selector_rejects_unreliable_strategy(
     log_events(
         store,
         strategy="direct_small",
-        count=6,
-        success_count=3,
+        count=20,
+        success_count=12,
         latency_ms=1000,
         cost_usd=0.005,
     )
@@ -107,8 +110,8 @@ def test_selector_rejects_unreliable_strategy(
     log_events(
         store,
         strategy="verified_cascade",
-        count=6,
-        success_count=6,
+        count=20,
+        success_count=20,
         latency_ms=1500,
         cost_usd=0.010,
     )
@@ -131,6 +134,8 @@ def test_selector_rejects_unreliable_strategy(
 
     assert decision.strategy == "verified_cascade"
     assert decision.source == "observed_telemetry"
+    assert decision.conservative_success_probability is not None
+    assert decision.conservative_success_probability >= 0.80
 
 
 def test_selector_falls_back_when_history_is_sparse(
@@ -158,6 +163,7 @@ def test_selector_falls_back_when_history_is_sparse(
     assert decision.strategy == "verified_cascade"
     assert decision.source == "fallback_policy"
 
+
 def test_selector_exposes_telemetry_match_level(
     tmp_path,
 ):
@@ -165,14 +171,11 @@ def test_selector_exposes_telemetry_match_level(
         str(tmp_path / "events.jsonl")
     )
 
-    complexities = [
-        "low",
-        "low",
-        "medium",
-        "medium",
-        "high",
-        "high",
-    ]
+    complexities = (
+        ["low"] * 8
+        + ["medium"] * 8
+        + ["high"] * 4
+    )
 
     for i, complexity in enumerate(complexities):
         store.log(
@@ -213,4 +216,52 @@ def test_selector_exposes_telemetry_match_level(
     assert decision.strategy == "direct_small"
     assert decision.source == "observed_telemetry"
     assert decision.match_level == "task_and_sensitivity"
-    assert decision.sample_count == 6
+    assert decision.sample_count == 20
+    assert decision.success_sample_count == 20
+
+
+def test_selector_rejects_small_perfect_sample(
+    tmp_path,
+):
+    store = TelemetryStore(
+        str(tmp_path / "events.jsonl")
+    )
+
+    log_events(
+        store,
+        strategy="direct_small",
+        count=5,
+        success_count=5,
+        latency_ms=1000,
+        cost_usd=0.005,
+    )
+
+    estimator = TelemetryEstimator(
+        store=store,
+        min_samples=5,
+    )
+
+    selector = StrategySelector(
+        estimator=estimator,
+        min_success_probability=0.80,
+    )
+
+    decision = selector.select(
+        task_type="reasoning",
+        complexity="medium",
+        sensitivity="medium",
+    )
+
+    assert decision.strategy == "direct_small"
+    assert decision.source == "fallback_policy"
+    assert decision.success_probability == 1.0
+
+    assert (
+        decision.conservative_success_probability
+        is not None
+    )
+
+    assert (
+        decision.conservative_success_probability
+        < 0.80
+    )

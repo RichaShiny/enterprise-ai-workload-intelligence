@@ -12,7 +12,7 @@ def test_pipeline_uses_telemetry_strategy_selector(
         str(tmp_path / "events.jsonl")
     )
 
-    for i in range(6):
+    for i in range(20):
         store.log(
             TelemetryEvent(
                 workload_id=f"test-{i}",
@@ -54,3 +54,13 @@ def test_pipeline_uses_telemetry_strategy_selector(
 
     assert decision.strategy == "direct_small"
     assert decision.source == "observed_telemetry"
+
+    assert (
+        decision.conservative_success_probability
+        is not None
+    )
+
+    assert (
+        decision.conservative_success_probability
+        >= 0.80
+    )
