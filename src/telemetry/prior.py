@@ -10,6 +10,7 @@ class RoutingPrior:
     estimated_cost_usd: float | None
     source: str
     sample_count: int
+    match_level: str | None = None
 
 
 def build_routing_prior(
@@ -33,6 +34,7 @@ def build_routing_prior(
             estimated_cost_usd=None,
             source="fallback",
             sample_count=0,
+            match_level=None,
         )
 
     return RoutingPrior(
@@ -41,4 +43,5 @@ def build_routing_prior(
         estimated_cost_usd=estimate.avg_cost_usd,
         source="observed_telemetry",
         sample_count=estimate.sample_count,
+        match_level=estimate.match_level,
     )

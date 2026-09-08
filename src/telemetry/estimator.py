@@ -16,6 +16,8 @@ class PerformanceEstimate:
     avg_cost_usd: float | None
     verification_pass_rate: float | None
 
+    match_level: str
+
 
 class TelemetryEstimator:
     def __init__(
@@ -35,18 +37,97 @@ class TelemetryEstimator:
     ) -> PerformanceEstimate | None:
         events = self.store.load()
 
-        matching = [
-            event
-            for event in events
-            if event["task_type"] == task_type
-            and event["complexity"] == complexity
-            and event["sensitivity"] == sensitivity
-            and event["strategy"] == strategy
+        match_levels = self._build_match_levels(
+            task_type=task_type,
+            complexity=complexity,
+            sensitivity=sensitivity,
+            strategy=strategy,
+        )
+
+        for match_level, matcher in match_levels:
+            matching = [
+                event
+                for event in events
+                if matcher(event)
+            ]
+
+            if len(matching) >= self.min_samples:
+                return self._build_estimate(
+                    matching=matching,
+                    task_type=task_type,
+                    complexity=complexity,
+                    sensitivity=sensitivity,
+                    strategy=strategy,
+                    match_level=match_level,
+                )
+
+        return None
+
+    def _build_match_levels(
+        self,
+        task_type: str,
+        complexity: str,
+        sensitivity: str,
+        strategy: str,
+    ):
+        levels = [
+            (
+                "exact",
+                lambda event: (
+                    event["task_type"] == task_type
+                    and event["complexity"] == complexity
+                    and event["sensitivity"] == sensitivity
+                    and event["strategy"] == strategy
+                ),
+            ),
+            (
+                "task_and_sensitivity",
+                lambda event: (
+                    event["task_type"] == task_type
+                    and event["sensitivity"] == sensitivity
+                    and event["strategy"] == strategy
+                ),
+            ),
         ]
 
-        if len(matching) < self.min_samples:
-            return None
+        if sensitivity != "high":
+            levels.extend(
+                [
+                    (
+                        "task_and_complexity",
+                        lambda event: (
+                            event["task_type"] == task_type
+                            and event["complexity"] == complexity
+                            and event["strategy"] == strategy
+                        ),
+                    ),
+                    (
+                        "task",
+                        lambda event: (
+                            event["task_type"] == task_type
+                            and event["strategy"] == strategy
+                        ),
+                    ),
+                    (
+                        "strategy",
+                        lambda event: (
+                            event["strategy"] == strategy
+                        ),
+                    ),
+                ]
+            )
 
+        return levels
+
+    def _build_estimate(
+        self,
+        matching: list[dict],
+        task_type: str,
+        complexity: str,
+        sensitivity: str,
+        strategy: str,
+        match_level: str,
+    ) -> PerformanceEstimate:
         success_values = [
             event["success"]
             for event in matching
@@ -83,6 +164,7 @@ class TelemetryEstimator:
             verification_pass_rate=self._mean(
                 verification_values
             ),
+            match_level=match_level,
         )
 
     @staticmethod
