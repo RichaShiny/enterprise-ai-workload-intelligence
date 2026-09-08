@@ -11,6 +11,7 @@ class PerformanceEstimate:
     strategy: str
 
     sample_count: int
+    success_sample_count: int
     success_rate: float | None
     avg_latency_ms: float | None
     avg_cost_usd: float | None
@@ -158,11 +159,12 @@ class TelemetryEstimator:
             sensitivity=sensitivity,
             strategy=strategy,
             sample_count=len(matching),
+            success_sample_count=len(success_values),
             success_rate=self._mean(success_values),
             avg_latency_ms=self._mean(latency_values),
             avg_cost_usd=self._mean(cost_values),
             verification_pass_rate=self._mean(
-                verification_values
+            verification_values
             ),
             match_level=match_level,
         )
