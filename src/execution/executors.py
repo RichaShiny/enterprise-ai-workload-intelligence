@@ -2,7 +2,7 @@ import os
 import time
 from dataclasses import dataclass
 
-from openai import OpenAI
+
 
 
 @dataclass
@@ -17,7 +17,11 @@ class ExecutionResult:
 
 class OpenAIExecutor:
     def __init__(self):
-        self.client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        from openai import OpenAI
+
+        self.client = OpenAI(
+            api_key=os.environ.get("OPENAI_API_KEY")
+        )
 
     def execute(
         self,
