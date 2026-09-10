@@ -1,4 +1,24 @@
-from src.policy_assistant.service import ApprovedPolicyAssistant
+from src.policy_assistant.change_gate import policy_release_fingerprint
+from src.policy_assistant.service import APPROVED_POLICIES, ApprovedPolicyAssistant, PolicyDocument
+
+
+def test_policy_release_fingerprint_is_stable_and_changes_with_policy_content():
+    original = policy_release_fingerprint(APPROVED_POLICIES)
+    reordered = policy_release_fingerprint(tuple(reversed(APPROVED_POLICIES)))
+    changed = policy_release_fingerprint((
+        PolicyDocument(
+            document_id=APPROVED_POLICIES[0].document_id,
+            title=APPROVED_POLICIES[0].title,
+            department=APPROVED_POLICIES[0].department,
+            version=APPROVED_POLICIES[0].version,
+            text="A changed policy body.",
+        ),
+        *APPROVED_POLICIES[1:],
+    ))
+
+    assert original.startswith("sha256:")
+    assert reordered == original
+    assert changed != original
 
 
 def test_policy_assistant_returns_cited_approved_evidence():
@@ -68,6 +88,8 @@ def test_policy_change_store_keeps_content_light_records(tmp_path):
         "candidate": {"retrieval_accuracy": 1.0, "safe_abstention_rate": 1.0},
         "baseline_snapshot": [{"document_id": "finance-v1", "department": "finance", "version": "1"}],
         "candidate_snapshot": [{"document_id": "finance-v2", "department": "finance", "version": "2"}],
+        "baseline_fingerprint": "sha256:baseline",
+        "candidate_fingerprint": "sha256:candidate",
     }, note="Quarterly policy update")
 
     recent = store.recent()
@@ -75,3 +97,4 @@ def test_policy_change_store_keeps_content_light_records(tmp_path):
     assert recent[0]["change_id"] == record["change_id"]
     assert recent[0]["note"] == "Quarterly policy update"
     assert "text" not in str(recent[0]["candidate_snapshot"])
+    assert recent[0]["candidate_fingerprint"] == "sha256:candidate"

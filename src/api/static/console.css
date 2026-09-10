@@ -33,6 +33,7 @@ footer { display:flex; gap:8px; justify-content:center; margin-top:30px; color:#
 .audit-record strong { font-size: .84rem; }
 .audit-record span { color: #8290ad; font-size: .72rem; }
 .audit-record p { color: #aeb9d2; font-size: .8rem; line-height: 1.35; margin: 6px 0 0; }
+.audit-fingerprint { color:#7585a8; display:block; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.68rem; margin-top:8px; }
 @media(max-width: 550px) { .audit-heading, .audit-record div { align-items: flex-start; flex-direction: column; gap: 5px; } }
 
 .provider-ready { color:#72dfbd; }

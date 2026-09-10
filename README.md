@@ -89,6 +89,8 @@ The console can also run a fixed, fictional benchmark that reports retrieval acc
 
 A proposed policy corpus can also be submitted to `POST /policy-assistant/change-gate`. The gate compares its retrieval and abstention metrics with the current baseline and rejects regressions. It makes policy updates reviewable; it does not authenticate policy authors or replace a production approval process. Every evaluation also creates a content-light audit record accessible through `GET /policy-assistant/change-history`; it retains metric outcomes and policy IDs/versions, never policy document text or user questions.
 
+Each release decision also records SHA-256 fingerprints for the baseline and candidate policy sets. The fingerprints change when policy content changes but do not expose that content, giving reviewers a way to identify the exact evaluated release in a protected source system.
+
 ### API Routing Examples
 
 #### High-Risk Compliance Workload
