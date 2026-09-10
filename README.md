@@ -26,6 +26,22 @@ The routing API is containerized with Docker and deployed as a public FastAPI se
 
 The deployed API exposes the workload-routing interface. Core routing benchmark outcomes remain simulation-based; the production path would replace synthetic tool-performance assumptions with observed telemetry collected through shadow traffic and controlled rollout.
 
+### Shadow-mode decision ledger
+
+The API now includes a small production-facing observability path that lets an
+application evaluate a routing recommendation without changing the strategy it
+actually uses:
+
+1. `POST /shadow-route` returns a recommendation alongside the active strategy.
+2. The application executes its active strategy as usual.
+3. `POST /telemetry/outcomes` records the content-free observed outcome.
+4. `GET /insights` reports observed success, latency, cost, and disagreements
+   between the active and recommended strategies.
+
+The ledger intentionally accepts operational metadata only. It does not accept
+or persist prompts, customer content, or model outputs. A shadow disagreement is
+an evaluation signal, not a claim that the recommended strategy performed better.
+
 ### API Routing Examples
 
 #### High-Risk Compliance Workload

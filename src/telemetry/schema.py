@@ -24,9 +24,15 @@ class TelemetryEvent:
     estimated_cost_usd: float | None = None
     success: bool | None = None
 
+    # Decision metadata is deliberately limited to operational information.
+    # Prompts, customer content, and model outputs do not belong in this ledger.
+    decision_id: str | None = None
+    recommended_strategy: str | None = None
+    routing_source: str | None = None
+    shadow_mode: bool = False
+
     timestamp: str = ""
 
     def __post_init__(self):
         if not self.timestamp:
             self.timestamp = datetime.now(timezone.utc).isoformat()
-
