@@ -168,6 +168,7 @@ def test_policy_change_gate_api_reports_a_release_decision(tmp_path, monkeypatch
 
     assert response.status_code == 200
     assert response.json()["passed"] is True
+    assert response.json()["candidate_fingerprint"].startswith("sha256:")
 
 
 def test_policy_change_history_reports_content_light_audit_records(tmp_path, monkeypatch):
@@ -197,3 +198,4 @@ def test_policy_change_history_reports_content_light_audit_records(tmp_path, mon
     assert history.status_code == 200
     assert history.json()["records"][0]["note"] == "Quarterly review"
     assert "text" not in str(history.json()["records"][0]["candidate_snapshot"])
+    assert history.json()["records"][0]["candidate_fingerprint"].startswith("sha256:")

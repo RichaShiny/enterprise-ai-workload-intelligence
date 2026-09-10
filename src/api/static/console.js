@@ -158,7 +158,10 @@ function renderAuditHistory(records) {
     const details = document.createElement('p');
     const changed = [...(record.improvements || []), ...(record.regressions || [])];
     details.textContent = record.note || (changed.length ? `Metrics reviewed: ${changed.join(', ').replaceAll('_', ' ')}.` : 'No metric change recorded.');
-    article.append(heading, details);
+    const fingerprint = document.createElement('span');
+    fingerprint.className = 'audit-fingerprint';
+    fingerprint.textContent = record.candidate_fingerprint ? `Release fingerprint ${record.candidate_fingerprint.slice(0, 20)}…` : 'Release fingerprint unavailable';
+    article.append(heading, details, fingerprint);
     container.append(article);
   });
 }

@@ -20,6 +20,8 @@ class PolicyChangeRecord:
     candidate: dict[str, float]
     baseline_snapshot: list[dict]
     candidate_snapshot: list[dict]
+    baseline_fingerprint: str
+    candidate_fingerprint: str
 
 
 class PolicyChangeStore:
@@ -42,6 +44,8 @@ class PolicyChangeStore:
             candidate=evaluation["candidate"],
             baseline_snapshot=evaluation["baseline_snapshot"],
             candidate_snapshot=evaluation["candidate_snapshot"],
+            baseline_fingerprint=evaluation["baseline_fingerprint"],
+            candidate_fingerprint=evaluation["candidate_fingerprint"],
         )
         serialized = asdict(record)
         with self.path.open("a", encoding="utf-8") as file:
