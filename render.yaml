@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: enterprise-ai-workload-intelligence-richa
+    runtime: docker
+    plan: free
+    autoDeploy: false
+    healthCheckPath: /health
+    envVars:
+      - key: POLICY_SUMMARY_ENABLED
+        value: "false"
