@@ -56,6 +56,25 @@ byId('route-form').addEventListener('submit', async (event) => {
 
 loadInsights();
 
+async function loadProviderStatus() {
+  const badge = byId('provider-status');
+  try {
+    const response = await fetch('/policy-assistant/provider-status');
+    if (!response.ok) throw new Error('Provider status unavailable');
+    const data = await response.json();
+    if (data.status === 'ready') {
+      badge.textContent = `Model summaries ready · ${data.model}`;
+      badge.classList.add('provider-ready');
+    } else {
+      badge.textContent = 'Cited evidence only';
+      badge.classList.remove('provider-ready');
+    }
+  } catch (_) {
+    badge.textContent = 'Cited evidence only';
+    badge.classList.remove('provider-ready');
+  }
+}
+
 byId('policy-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const button = byId('ask-policy');
@@ -74,6 +93,17 @@ byId('policy-form').addEventListener('submit', async (event) => {
     byId('grounding').textContent = result.grounded ? 'Grounded in approved evidence' : 'Abstained — insufficient evidence';
     byId('policy-answer').textContent = result.answer;
     byId('policy-reason').textContent = result.reason;
+    const summary = data.model_summary || {};
+    const summaryPanel = byId('model-summary');
+    if (summary.status === 'generated') {
+      summaryPanel.hidden = false;
+      byId('model-summary-answer').textContent = summary.answer;
+      byId('model-summary-note').textContent = `Generated from the selected evidence with ${summary.provider} · ${summary.model}. Review the citations below before acting.`;
+    } else {
+      summaryPanel.hidden = true;
+      byId('model-summary-answer').textContent = '';
+      byId('model-summary-note').textContent = '';
+    }
     byId('policy-evidence').innerHTML = result.evidence.map((item) => `<article><strong>${item.title}</strong><span>${item.department} · version ${item.version} · relevance ${Math.round(item.relevance_score * 100)}%</span><p>${item.excerpt}</p></article>`).join('');
   } catch (error) {
     byId('policy-empty').hidden = false;
@@ -152,3 +182,4 @@ async function loadPolicyChangeHistory() {
 
 byId('refresh-history').addEventListener('click', loadPolicyChangeHistory);
 loadPolicyChangeHistory();
+loadProviderStatus();
