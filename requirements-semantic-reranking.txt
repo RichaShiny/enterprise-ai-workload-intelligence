@@ -1,0 +1,2 @@
+-r requirements-api.txt
+sentence-transformers
