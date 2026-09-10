@@ -70,6 +70,8 @@ demo content; production use would connect an access-controlled policy source.
 
 The console can also run a fixed, fictional benchmark that reports retrieval accuracy and safe abstention separately. This is a regression check for the demo corpus, not a claim about production policy quality.
 
+A proposed policy corpus can also be submitted to `POST /policy-assistant/change-gate`. The gate compares its retrieval and abstention metrics with the current baseline and rejects regressions. It makes policy updates reviewable; it does not authenticate policy authors or replace a production approval process.
+
 ### API Routing Examples
 
 #### High-Risk Compliance Workload

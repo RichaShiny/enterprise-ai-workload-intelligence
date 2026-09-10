@@ -32,3 +32,24 @@ def test_policy_evaluation_reports_retrieval_and_safe_abstention():
     assert report["retrieval_accuracy"] == 1.0
     assert report["safe_abstention_rate"] == 1.0
     assert report["overall_accuracy"] == 1.0
+
+
+def test_policy_change_gate_rejects_a_revision_that_breaks_expected_retrieval():
+    from src.policy_assistant.change_gate import evaluate_policy_change
+    from src.policy_assistant.service import APPROVED_POLICIES, PolicyDocument
+
+    candidate = tuple(
+        PolicyDocument(
+            document_id="finance-expense-retention-v2" if policy.document_id == "finance-expense-retention" else policy.document_id,
+            title=policy.title,
+            department=policy.department,
+            version="2026.2" if policy.document_id == "finance-expense-retention" else policy.version,
+            text=policy.text,
+        )
+        for policy in APPROVED_POLICIES
+    )
+
+    report = evaluate_policy_change(candidate)
+
+    assert report["passed"] is False
+    assert "retrieval_accuracy" in report["regressions"]
