@@ -55,3 +55,31 @@ byId('route-form').addEventListener('submit', async (event) => {
 });
 
 loadInsights();
+
+byId('policy-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const button = byId('ask-policy');
+  button.disabled = true;
+  button.firstChild.textContent = 'Retrieving… ';
+  try {
+    const response = await fetch('/policy-assistant', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({question: byId('policy-question').value, department: byId('policy-department').value || null}),
+    });
+    if (!response.ok) throw new Error('The policy evidence could not be retrieved.');
+    const data = await response.json();
+    const result = data.policy_result;
+    byId('policy-empty').hidden = true;
+    byId('policy-result').hidden = false;
+    byId('grounding').textContent = result.grounded ? 'Grounded in approved evidence' : 'Abstained — insufficient evidence';
+    byId('policy-answer').textContent = result.answer;
+    byId('policy-reason').textContent = result.reason;
+    byId('policy-evidence').innerHTML = result.evidence.map((item) => `<article><strong>${item.title}</strong><span>${item.department} · version ${item.version} · relevance ${Math.round(item.relevance_score * 100)}%</span><p>${item.excerpt}</p></article>`).join('');
+  } catch (error) {
+    byId('policy-empty').hidden = false;
+    byId('policy-empty').textContent = error.message;
+  } finally {
+    button.disabled = false;
+    button.firstChild.textContent = 'Retrieve approved evidence ';
+  }
+});

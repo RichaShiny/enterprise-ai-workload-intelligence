@@ -60,6 +60,14 @@ operator define a workload and policy limits, review eligible and excluded
 strategies, and see aggregate shadow-mode telemetry without collecting prompts
 or model outputs.
 
+### Policy retrieval workflow
+
+The console also includes an evidence-first policy assistant. It retrieves from
+a small demonstration corpus of approved policies, cites the policy and version
+used, routes the retrieval workload through the same policy engine, and
+abstains when no approved evidence matches. The included policies are fictional
+demo content; production use would connect an access-controlled policy source.
+
 ### API Routing Examples
 
 #### High-Risk Compliance Workload
