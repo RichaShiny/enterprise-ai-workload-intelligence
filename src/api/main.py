@@ -23,6 +23,8 @@ class RouteRequest(BaseModel):
     sensitivity: str
     risk_level: str
     complexity: str = "medium"
+    min_success_probability: float = Field(default=0.80, gt=0, le=1)
+    max_latency_ms: float = Field(default=6000, gt=0)
 
 
 class ShadowRouteRequest(RouteRequest):
@@ -81,6 +83,8 @@ def select_recommendation(
 
     selector = StrategySelector(
         estimator=TelemetryEstimator(store or telemetry_store),
+        min_success_probability=request.min_success_probability,
+        max_latency_ms=request.max_latency_ms,
     )
     decision = selector.select(
         task_type=request.task_type.lower(),
@@ -96,6 +100,11 @@ def select_recommendation(
         "conservative_success_probability": decision.conservative_success_probability,
         "expected_latency_ms": decision.expected_latency_ms,
         "estimated_cost_usd": decision.estimated_cost_usd,
+        "policy": {
+            "min_success_probability": request.min_success_probability,
+            "max_latency_ms": request.max_latency_ms,
+        },
+        "candidates": decision.candidates,
         "note": (
             "Recommendation is based on observed telemetry with confidence-aware constraints."
             if decision.source == "observed_telemetry"

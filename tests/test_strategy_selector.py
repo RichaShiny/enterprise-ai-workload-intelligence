@@ -89,6 +89,7 @@ def test_selector_chooses_cheapest_feasible_strategy(
     assert decision.success_sample_count == 20
     assert decision.conservative_success_probability is not None
     assert decision.conservative_success_probability >= 0.80
+    assert all(candidate["eligible"] for candidate in decision.candidates)
 
 
 def test_selector_rejects_unreliable_strategy(
@@ -136,6 +137,13 @@ def test_selector_rejects_unreliable_strategy(
     assert decision.source == "observed_telemetry"
     assert decision.conservative_success_probability is not None
     assert decision.conservative_success_probability >= 0.80
+    small_model = next(
+        candidate
+        for candidate in decision.candidates
+        if candidate["strategy"] == "direct_small"
+    )
+    assert small_model["eligible"] is False
+    assert "Conservative success estimate" in small_model["reasons"][0]
 
 
 def test_selector_falls_back_when_history_is_sparse(
