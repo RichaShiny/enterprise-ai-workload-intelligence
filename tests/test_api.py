@@ -92,3 +92,13 @@ def test_insights_distinguish_observed_and_pending_outcomes():
     assert report["outcomes_pending"] == 1
     assert report["observed_success_rate"] == 1.0
     assert report["shadow_recommendation_disagreements"] == 1
+
+
+def test_console_is_served_as_an_operator_interface():
+    from fastapi.testclient import TestClient
+    from src.api.main import app
+
+    response = TestClient(app).get("/console")
+
+    assert response.status_code == 200
+    assert "Evaluate a workload" in response.text

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Enterprise AI Workload Intelligence operator console" />
+    <title>Workload Intelligence</title>
+    <link rel="stylesheet" href="/static/console.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand"><span class="brand-mark">W</span><span>Workload Intelligence</span></div>
+        <span class="status"><i></i> Shadow mode ready</span>
+      </header>
+
+      <section class="hero">
+        <p class="eyebrow">ENTERPRISE AI DECISION LAYER</p>
+        <h1>Route AI work with evidence, limits, and clear reasoning.</h1>
+        <p class="lede">Evaluate an AI workload before you send it. The console recommends a strategy and explains the evidence behind the choice.</p>
+      </section>
+
+      <section class="metrics" aria-label="Operational telemetry summary">
+        <article><span>Recorded executions</span><strong id="events">—</strong></article>
+        <article><span>Observed success</span><strong id="success">—</strong></article>
+        <article><span>Average latency</span><strong id="latency">—</strong></article>
+        <article><span>Shadow disagreements</span><strong id="disagreements">—</strong></article>
+      </section>
+
+      <section class="workspace">
+        <form id="route-form" class="panel form-panel">
+          <div class="panel-heading"><div><p class="eyebrow">01 · DEFINE THE WORK</p><h2>Evaluate a workload</h2></div><span class="hint">No prompts or outputs collected</span></div>
+          <label>Task type
+            <select id="task_type" name="task_type">
+              <option value="retrieval">Knowledge retrieval</option>
+              <option value="reasoning">Business reasoning</option>
+              <option value="technical_reasoning">Technical reasoning</option>
+              <option value="summarization">Summarization</option>
+              <option value="classification">Classification</option>
+            </select>
+          </label>
+          <div class="grid-two">
+            <label>Complexity
+              <select id="complexity" name="complexity"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select>
+            </label>
+            <label>Data sensitivity
+              <select id="sensitivity" name="sensitivity"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select>
+            </label>
+          </div>
+          <label>Failure risk
+            <select id="risk_level" name="risk_level"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select>
+          </label>
+          <div class="limits"><p class="eyebrow">POLICY LIMITS</p><div class="grid-two">
+            <label>Minimum success probability<input id="min_success_probability" name="min_success_probability" type="number" min="0.01" max="1" step="0.01" value="0.80" /></label>
+            <label>Maximum latency (ms)<input id="max_latency_ms" name="max_latency_ms" type="number" min="1" step="100" value="6000" /></label>
+          </div></div>
+          <button type="submit" id="evaluate">Evaluate routing strategy <span>→</span></button>
+        </form>
+
+        <section class="panel decision-panel" aria-live="polite">
+          <div class="panel-heading"><div><p class="eyebrow">02 · REVIEW THE DECISION</p><h2>Routing recommendation</h2></div><span id="source" class="source">Awaiting workload</span></div>
+          <div id="empty-state" class="empty"><div class="empty-icon">↗</div><h3>Ready to evaluate</h3><p>Set a workload and its operating limits. The recommendation and candidate assessment will appear here.</p></div>
+          <div id="decision" hidden>
+            <div class="recommendation"><span>Recommended strategy</span><strong id="strategy">—</strong><p id="note">—</p></div>
+            <dl class="evidence"><div><dt>Evidence</dt><dd id="samples">—</dd></div><div><dt>Match level</dt><dd id="match">—</dd></div><div><dt>Conservative success</dt><dd id="confidence">—</dd></div></dl>
+            <h3>Candidate assessment</h3><div id="candidates" class="candidates"></div>
+          </div>
+        </section>
+      </section>
+
+      <footer><span>Operational metadata only</span><span>·</span><span>Use shadow recommendations to evaluate policy before changing live traffic.</span></footer>
+    </main>
+    <script src="/static/console.js"></script>
+  </body>
+</html>
