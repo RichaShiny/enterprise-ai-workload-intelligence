@@ -9,9 +9,33 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+
+
+CITATION_PATTERN = re.compile(r"\[([a-z0-9-]+) v([^\]\s]+)\]", re.IGNORECASE)
+
+
+def validate_citations(text: str, evidence: list[dict]) -> list[dict] | None:
+    """Return validated citations, or ``None`` when the summary is not traceable.
+
+    This does not claim to prove every generated sentence is faithful. It stops a
+    provider result from being displayed as grounded if it has no citation or
+    refers to a policy document/version outside the retrieved evidence.
+    """
+    allowed = {
+        (item["document_id"].lower(), str(item["version"]))
+        for item in evidence
+    }
+    found = [(document_id.lower(), version) for document_id, version in CITATION_PATTERN.findall(text)]
+    if not found or any(citation not in allowed for citation in found):
+        return None
+    return [
+        {"document_id": document_id, "version": version}
+        for document_id, version in dict.fromkeys(found)
+    ]
 
 
 class PolicySummaryProvider:
@@ -93,11 +117,20 @@ class PolicySummaryProvider:
             text = body.get("output_text", "").strip()
             if not text:
                 raise ValueError("The provider returned no output text.")
+            citations = validate_citations(text, evidence)
+            if citations is None:
+                return {
+                    "status": "fallback",
+                    "provider": "openai",
+                    "model": self.model,
+                    "reason": "Provider summary did not cite only the selected approved evidence.",
+                }
             return {
                 "status": "generated",
                 "provider": "openai",
                 "model": self.model,
                 "answer": text,
+                "citations": citations,
             }
         except (HTTPError, URLError, TimeoutError, ValueError, json.JSONDecodeError):
             return {
