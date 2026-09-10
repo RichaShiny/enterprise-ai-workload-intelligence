@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from src.execution.strategy_selector import StrategySelector
+from src.policy_assistant.audit import PolicyChangeStore
 from src.policy_assistant.change_gate import evaluate_policy_change
 from src.policy_assistant.evaluation import evaluate_policy_assistant
 from src.policy_assistant.service import APPROVED_POLICIES, ApprovedPolicyAssistant, PolicyDocument
@@ -79,12 +80,16 @@ class PolicyDocumentInput(BaseModel):
 
 class PolicyChangeRequest(BaseModel):
     candidate_policies: list[PolicyDocumentInput] = Field(min_length=1, max_length=100)
+    note: str | None = Field(default=None, max_length=500)
 
 
 telemetry_store = TelemetryStore(
     os.getenv("TELEMETRY_PATH", "data/telemetry/events.jsonl")
 )
 policy_assistant = ApprovedPolicyAssistant()
+policy_change_store = PolicyChangeStore(
+    os.getenv("POLICY_CHANGE_PATH", "data/policy_changes/decisions.jsonl")
+)
 STATIC_DIR = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
@@ -253,9 +258,29 @@ def policy_assistant_evaluation():
 
 @app.post("/policy-assistant/change-gate")
 def policy_assistant_change_gate(request: PolicyChangeRequest):
-    """Compare a proposed policy revision with the current release baseline."""
+    """Compare a proposed policy revision and retain a content-light decision record."""
     candidate_policies = tuple(PolicyDocument(**item.model_dump()) for item in request.candidate_policies)
-    return evaluate_policy_change(candidate_policies, baseline_policies=APPROVED_POLICIES)
+    evaluation = evaluate_policy_change(candidate_policies, baseline_policies=APPROVED_POLICIES)
+    audit_record = policy_change_store.record(evaluation, note=request.note)
+    return {
+        **evaluation,
+        "audit": {
+            "change_id": audit_record["change_id"],
+            "created_at": audit_record["created_at"],
+            "note": audit_record["note"],
+        },
+    }
+
+
+@app.get("/policy-assistant/change-history")
+def policy_assistant_change_history(limit: int = 20):
+    """Return recent policy release-gate outcomes without policy body text."""
+    safe_limit = min(max(limit, 1), 100)
+    return {
+        "records": policy_change_store.recent(limit=safe_limit),
+        "privacy": "Records contain metrics and policy metadata, not policy document text or user questions.",
+        "scope": "Demonstration audit trail. Production requires authenticated authors and protected, durable storage.",
+    }
 
 
 @app.post("/policy-assistant")

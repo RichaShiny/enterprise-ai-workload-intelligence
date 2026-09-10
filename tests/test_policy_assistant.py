@@ -53,3 +53,25 @@ def test_policy_change_gate_rejects_a_revision_that_breaks_expected_retrieval():
 
     assert report["passed"] is False
     assert "retrieval_accuracy" in report["regressions"]
+
+
+def test_policy_change_store_keeps_content_light_records(tmp_path):
+    from src.policy_assistant.audit import PolicyChangeStore
+
+    store = PolicyChangeStore(str(tmp_path / "decisions.jsonl"))
+    record = store.record({
+        "passed": True,
+        "regressions": [],
+        "improvements": ["retrieval_accuracy"],
+        "unchanged": ["safe_abstention_rate"],
+        "baseline": {"retrieval_accuracy": 0.8, "safe_abstention_rate": 1.0},
+        "candidate": {"retrieval_accuracy": 1.0, "safe_abstention_rate": 1.0},
+        "baseline_snapshot": [{"document_id": "finance-v1", "department": "finance", "version": "1"}],
+        "candidate_snapshot": [{"document_id": "finance-v2", "department": "finance", "version": "2"}],
+    }, note="Quarterly policy update")
+
+    recent = store.recent()
+
+    assert recent[0]["change_id"] == record["change_id"]
+    assert recent[0]["note"] == "Quarterly policy update"
+    assert "text" not in str(recent[0]["candidate_snapshot"])

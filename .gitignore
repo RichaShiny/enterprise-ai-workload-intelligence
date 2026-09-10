@@ -14,3 +14,6 @@ results/*
 
 data/raw/*.csv
 data/processed/*.csv
+
+# Local policy-change audit records
+data/policy_changes/
