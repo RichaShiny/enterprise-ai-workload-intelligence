@@ -129,10 +129,14 @@ def test_policy_assistant_evaluation_endpoint_exposes_demo_quality_metrics():
     assert response.json()["safe_abstention_rate"] == 1.0
 
 
-def test_policy_change_gate_api_reports_a_release_decision():
+def test_policy_change_gate_api_reports_a_release_decision(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
     from src.api.main import app
+    from src.policy_assistant.audit import PolicyChangeStore
     from src.policy_assistant.service import APPROVED_POLICIES
+    import src.api.main as api_main
+
+    monkeypatch.setattr(api_main, "policy_change_store", PolicyChangeStore(str(tmp_path / "changes.jsonl")))
 
     response = TestClient(app).post(
         "/policy-assistant/change-gate",
@@ -150,3 +154,32 @@ def test_policy_change_gate_api_reports_a_release_decision():
 
     assert response.status_code == 200
     assert response.json()["passed"] is True
+
+
+def test_policy_change_history_reports_content_light_audit_records(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from src.api.main import app
+    from src.policy_assistant.audit import PolicyChangeStore
+    import src.api.main as api_main
+
+    monkeypatch.setattr(api_main, "policy_change_store", PolicyChangeStore(str(tmp_path / "changes.jsonl")))
+    client = TestClient(app)
+    candidate_policies = [{
+        "document_id": policy.document_id,
+        "title": policy.title,
+        "department": policy.department,
+        "version": policy.version,
+        "text": policy.text,
+    } for policy in __import__("src.policy_assistant.service", fromlist=["APPROVED_POLICIES"]).APPROVED_POLICIES]
+
+    response = client.post(
+        "/policy-assistant/change-gate",
+        json={"candidate_policies": candidate_policies, "note": "Quarterly review"},
+    )
+    history = client.get("/policy-assistant/change-history")
+
+    assert response.status_code == 200
+    assert response.json()["audit"]["note"] == "Quarterly review"
+    assert history.status_code == 200
+    assert history.json()["records"][0]["note"] == "Quarterly review"
+    assert "text" not in str(history.json()["records"][0]["candidate_snapshot"])
