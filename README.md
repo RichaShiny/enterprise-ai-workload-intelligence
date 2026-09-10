@@ -68,6 +68,8 @@ used, routes the retrieval workload through the same policy engine, and
 abstains when no approved evidence matches. The included policies are fictional
 demo content; production use would connect an access-controlled policy source.
 
+The console can also run a fixed, fictional benchmark that reports retrieval accuracy and safe abstention separately. This is a regression check for the demo corpus, not a claim about production policy quality.
+
 ### API Routing Examples
 
 #### High-Risk Compliance Workload

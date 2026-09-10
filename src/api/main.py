@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from src.execution.strategy_selector import StrategySelector
+from src.policy_assistant.evaluation import evaluate_policy_assistant
 from src.policy_assistant.service import ApprovedPolicyAssistant
 from src.telemetry.estimator import TelemetryEstimator
 from src.telemetry.schema import TelemetryEvent
@@ -229,6 +230,12 @@ def shadow_route(request: ShadowRouteRequest):
         "next_step": "Execute your active strategy, then POST its content-free outcome to /telemetry/outcomes.",
         "note": "A shadow recommendation does not alter user traffic or prove a performance improvement.",
     }
+
+
+@app.get("/policy-assistant/evaluation")
+def policy_assistant_evaluation():
+    """Run the fixed, fictional policy benchmark for the operator console."""
+    return evaluate_policy_assistant(policy_assistant)
 
 
 @app.post("/policy-assistant")
