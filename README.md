@@ -16,16 +16,24 @@ The core routing experiments use **simulated tool classes and synthetic workload
 
 Separate model experiments use pretrained open models for retrieval, faithfulness evaluation, encoder fine-tuning, and generative LoRA adaptation.
 
-## Local demo
+## Public demo on Render’s free tier
 
-The routing API is containerized with Docker and can be run locally without a hosting account or provider key:
+This repository includes a [`render.yaml`](render.yaml) Blueprint for a public FastAPI demo. It uses Render’s `free` web-service plan, has automatic deploys disabled, and keeps model-backed summaries disabled—so the application has no configured paid model calls.
+
+To deploy it, create a new Blueprint in Render and select this repository. Review the service name and keep the **Free** compute plan before creating it. The public service will be available at an `onrender.com` URL.
+
+Free services spin down after 15 minutes without traffic and have monthly usage limits. They are appropriate for a portfolio demo, not a production service. See [Render’s Free deployment limits](https://render.com/docs/free).
+
+### Local fallback
+
+You can also run the same demo locally:
 
 ```bash
 docker build -t enterprise-ai-workload-intelligence .
 docker run --rm -p 8000:8000 enterprise-ai-workload-intelligence
 ```
 
-Then open [http://localhost:8000/console](http://localhost:8000/console) for the operator interface, or [http://localhost:8000/docs](http://localhost:8000/docs) for the API docs. The default mode uses the fictional approved-policy catalog and makes no external model calls.
+Then open [http://localhost:8000/console](http://localhost:8000/console) for the operator interface, or [http://localhost:8000/docs](http://localhost:8000/docs) for API docs. The default mode uses the fictional approved-policy catalog and makes no external model calls.
 
 Try a cited policy response from a second terminal:
 
