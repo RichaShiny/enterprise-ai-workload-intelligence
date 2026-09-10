@@ -1,9 +1,12 @@
 import os
 from collections import Counter
+from pathlib import Path
 from statistics import mean
 from uuid import uuid4
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from src.execution.strategy_selector import StrategySelector
@@ -58,6 +61,8 @@ class OutcomeRequest(BaseModel):
 telemetry_store = TelemetryStore(
     os.getenv("TELEMETRY_PATH", "data/telemetry/events.jsonl")
 )
+STATIC_DIR = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 def select_recommendation(
@@ -174,6 +179,12 @@ def root():
         "docs": "/docs",
         "health": "/health",
     }
+
+
+@app.get("/console", include_in_schema=False)
+def console():
+    """Serve the operator interface separately from the machine API root."""
+    return FileResponse(STATIC_DIR / "index.html")
 
 @app.get("/health")
 def health():

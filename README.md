@@ -53,6 +53,13 @@ success and latency limits, every candidate strategy, and the reason a
 candidate was excluded. This makes a recommendation reviewable instead of
 asking an operator to trust an opaque score.
 
+### Operator console
+
+Open `/console` on the running API to use the browser interface. It lets an
+operator define a workload and policy limits, review eligible and excluded
+strategies, and see aggregate shadow-mode telemetry without collecting prompts
+or model outputs.
+
 ### API Routing Examples
 
 #### High-Risk Compliance Workload
