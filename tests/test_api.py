@@ -102,6 +102,7 @@ def test_console_is_served_as_an_operator_interface():
 
     assert response.status_code == 200
     assert "Evaluate a workload" in response.text
+    assert "Recent policy-change decisions" in response.text
 
 
 def test_policy_assistant_api_returns_grounded_evidence():
