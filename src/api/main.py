@@ -6,6 +6,8 @@ from uuid import uuid4
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
+from src.execution.strategy_selector import StrategySelector
+from src.telemetry.estimator import TelemetryEstimator
 from src.telemetry.schema import TelemetryEvent
 from src.telemetry.store import TelemetryStore
 
@@ -56,17 +58,55 @@ telemetry_store = TelemetryStore(
 )
 
 
-def choose_strategy(request: RouteRequest) -> str:
-    """A transparent starter policy until observed telemetry is sufficient."""
-    task_type = request.task_type.lower()
+def select_recommendation(
+    request: RouteRequest,
+    store: TelemetryStore | None = None,
+) -> dict:
+    """Apply hard risk guardrails, then use evidence when it is sufficient."""
     sensitivity = request.sensitivity.lower()
     risk_level = request.risk_level.lower()
 
     if sensitivity == "high" or risk_level == "high":
-        return "direct_frontier"
-    if task_type in {"technical_reasoning", "compliance", "retrieval"}:
-        return "verified_cascade"
-    return "direct_small"
+        return {
+            "recommended_strategy": "direct_frontier",
+            "routing_source": "risk_guardrail",
+            "sample_count": 0,
+            "match_level": None,
+            "observed_success_probability": None,
+            "conservative_success_probability": None,
+            "expected_latency_ms": None,
+            "estimated_cost_usd": None,
+            "note": "High-risk or high-sensitivity workloads use the explicit frontier guardrail.",
+        }
+
+    selector = StrategySelector(
+        estimator=TelemetryEstimator(store or telemetry_store),
+    )
+    decision = selector.select(
+        task_type=request.task_type.lower(),
+        complexity=request.complexity.lower(),
+        sensitivity=sensitivity,
+    )
+    return {
+        "recommended_strategy": decision.strategy,
+        "routing_source": decision.source,
+        "sample_count": decision.sample_count,
+        "match_level": decision.match_level,
+        "observed_success_probability": decision.success_probability,
+        "conservative_success_probability": decision.conservative_success_probability,
+        "expected_latency_ms": decision.expected_latency_ms,
+        "estimated_cost_usd": decision.estimated_cost_usd,
+        "note": (
+            "Recommendation is based on observed telemetry with confidence-aware constraints."
+            if decision.source == "observed_telemetry"
+            else "Recommendation uses the cold-start fallback policy until sufficient telemetry exists."
+        ),
+    }
+
+
+def choose_strategy(request: RouteRequest) -> str:
+    """Compatibility helper for callers that only need the strategy name."""
+    return select_recommendation(request)["recommended_strategy"]
 
 
 def summarize_events(events: list[dict]) -> dict:
@@ -133,27 +173,29 @@ def health():
 
 @app.post("/route")
 def route_workload(request: RouteRequest):
-    strategy = choose_strategy(request)
+    recommendation = select_recommendation(request)
 
     return {
         "task_type": request.task_type,
+        "complexity": request.complexity,
         "sensitivity": request.sensitivity,
         "risk_level": request.risk_level,
-        "recommended_strategy": strategy,
-        "note": "Starter policy. Its benchmark assumptions are simulation-based until observed telemetry is collected.",
+        **recommendation,
     }
 
 
 @app.post("/shadow-route")
 def shadow_route(request: ShadowRouteRequest):
     """Recommend a strategy without changing the caller's active execution."""
-    recommended_strategy = choose_strategy(request)
+    recommendation = select_recommendation(request)
+    recommended_strategy = recommendation["recommended_strategy"]
     return {
         "decision_id": str(uuid4()),
         "active_strategy": request.active_strategy,
         "recommended_strategy": recommended_strategy,
         "disagrees_with_active_strategy": recommended_strategy != request.active_strategy,
         "mode": "shadow",
+        "recommendation": recommendation,
         "next_step": "Execute your active strategy, then POST its content-free outcome to /telemetry/outcomes.",
         "note": "A shadow recommendation does not alter user traffic or prove a performance improvement.",
     }

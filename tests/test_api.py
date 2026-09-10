@@ -1,16 +1,62 @@
-from src.api.main import OutcomeRequest, RouteRequest, summarize_events
+from src.api.main import (
+    OutcomeRequest,
+    RouteRequest,
+    select_recommendation,
+    summarize_events,
+)
+from src.telemetry.schema import TelemetryEvent
+from src.telemetry.store import TelemetryStore
 
 
-def test_high_risk_workloads_route_to_frontier():
+def test_high_risk_workloads_use_explicit_frontier_guardrail():
     request = RouteRequest(
         task_type="summarization",
         sensitivity="medium",
         risk_level="high",
     )
 
-    from src.api.main import choose_strategy
+    decision = select_recommendation(request)
 
-    assert choose_strategy(request) == "direct_frontier"
+    assert decision["recommended_strategy"] == "direct_frontier"
+    assert decision["routing_source"] == "risk_guardrail"
+
+
+def test_sufficient_observed_telemetry_informs_recommendation(tmp_path):
+    store = TelemetryStore(str(tmp_path / "events.jsonl"))
+
+    for index in range(30):
+        store.log(TelemetryEvent(
+            workload_id=f"telemetry-{index}",
+            task_type="retrieval",
+            complexity="medium",
+            sensitivity="low",
+            strategy="direct_small",
+            model="small-model",
+            latency_ms=250.0,
+            input_tokens=50,
+            output_tokens=25,
+            total_tokens=75,
+            escalated=False,
+            verification_passed=True,
+            verification_confidence=0.95,
+            estimated_cost_usd=0.002,
+            success=True,
+        ))
+
+    decision = select_recommendation(
+        RouteRequest(
+            task_type="retrieval",
+            complexity="medium",
+            sensitivity="low",
+            risk_level="low",
+        ),
+        store=store,
+    )
+
+    assert decision["recommended_strategy"] == "direct_small"
+    assert decision["routing_source"] == "observed_telemetry"
+    assert decision["sample_count"] == 30
+    assert decision["estimated_cost_usd"] == 0.002
 
 
 def test_outcome_schema_excludes_customer_content():
