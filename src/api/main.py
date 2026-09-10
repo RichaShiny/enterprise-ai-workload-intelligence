@@ -17,6 +17,7 @@ from src.policy_assistant.evaluation import evaluate_policy_assistant
 from src.policy_assistant.provider import PolicySummaryProvider
 from src.policy_assistant.lifecycle import decide_policy_response
 from src.policy_assistant.service import APPROVED_POLICIES, ApprovedPolicyAssistant, PolicyDocument
+from src.retrieval.ranker import SemanticReranker
 from src.telemetry.estimator import TelemetryEstimator
 from src.telemetry.schema import TelemetryEvent
 from src.telemetry.store import TelemetryStore
@@ -89,7 +90,10 @@ class PolicyChangeRequest(BaseModel):
 telemetry_store = TelemetryStore(
     os.getenv("TELEMETRY_PATH", "data/telemetry/events.jsonl")
 )
-policy_assistant = ApprovedPolicyAssistant()
+semantic_reranking_enabled = os.getenv("POLICY_SEMANTIC_RERANKING_ENABLED", "false").lower() == "true"
+policy_assistant = ApprovedPolicyAssistant(
+    semantic_reranker=SemanticReranker() if semantic_reranking_enabled else None
+)
 policy_summary_provider = PolicySummaryProvider()
 policy_change_store = PolicyChangeStore(
     os.getenv("POLICY_CHANGE_PATH", "data/policy_changes/decisions.jsonl")
@@ -265,6 +269,7 @@ def policy_assistant_catalog():
     """Return safe metadata for the reviewed policy release currently in use."""
     return {
         **catalog_metadata(),
+        "reranking": "semantic" if semantic_reranking_enabled else "lexical",
         "privacy": "Catalog metadata excludes policy text. Production sources must be access-controlled.",
     }
 
