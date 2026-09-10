@@ -13,6 +13,7 @@ from src.execution.strategy_selector import StrategySelector
 from src.policy_assistant.audit import PolicyChangeStore
 from src.policy_assistant.change_gate import evaluate_policy_change
 from src.policy_assistant.evaluation import evaluate_policy_assistant
+from src.policy_assistant.provider import PolicySummaryProvider
 from src.policy_assistant.service import APPROVED_POLICIES, ApprovedPolicyAssistant, PolicyDocument
 from src.telemetry.estimator import TelemetryEstimator
 from src.telemetry.schema import TelemetryEvent
@@ -87,6 +88,7 @@ telemetry_store = TelemetryStore(
     os.getenv("TELEMETRY_PATH", "data/telemetry/events.jsonl")
 )
 policy_assistant = ApprovedPolicyAssistant()
+policy_summary_provider = PolicySummaryProvider()
 policy_change_store = PolicyChangeStore(
     os.getenv("POLICY_CHANGE_PATH", "data/policy_changes/decisions.jsonl")
 )
@@ -256,6 +258,18 @@ def policy_assistant_evaluation():
     return evaluate_policy_assistant(policy_assistant)
 
 
+@app.get("/policy-assistant/provider-status")
+def policy_assistant_provider_status():
+    """Expose safe configuration readiness without disclosing any secret."""
+    return {
+        **policy_summary_provider.status(),
+        "privacy": (
+            "A provider receives a submitted question and selected approved-policy excerpts "
+            "only after summaries are explicitly enabled. This service stores neither."
+        ),
+    }
+
+
 @app.post("/policy-assistant/change-gate")
 def policy_assistant_change_gate(request: PolicyChangeRequest):
     """Compare a proposed policy revision and retain a content-light decision record."""
@@ -290,6 +304,14 @@ def answer_policy_question(request: PolicyAssistantRequest):
         question=request.question,
         department=request.department,
     )
+    model_summary = (
+        policy_summary_provider.summarize(request.question, policy_result["evidence"])
+        if policy_result["grounded"]
+        else {
+            "status": "not_requested",
+            "reason": "No provider summary is requested when approved-policy retrieval abstains.",
+        }
+    )
     routing = select_recommendation(RouteRequest(
         task_type="retrieval",
         complexity=request.complexity,
@@ -300,7 +322,12 @@ def answer_policy_question(request: PolicyAssistantRequest):
         "question": request.question,
         "routing": routing,
         "policy_result": policy_result,
-        "privacy": "Only the submitted question is processed; this demo returns approved-policy evidence and stores no question history.",
+        "model_summary": model_summary,
+        "privacy": (
+            "This service stores no question history. When provider summaries are disabled, only "
+            "deterministic approved-policy evidence is returned. When enabled, the submitted question "
+            "and selected approved-policy excerpts are sent to the configured provider for a non-stored summary."
+        ),
     }
 
 
