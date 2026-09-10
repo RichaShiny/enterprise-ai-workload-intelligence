@@ -41,3 +41,9 @@ footer { display:flex; gap:8px; justify-content:center; margin-top:30px; color:#
 .model-summary .eyebrow { margin-bottom:7px; }
 .model-summary p { margin:0; color:#d8dfff; font-size:.9rem; line-height:1.5; }
 .model-summary #model-summary-note { color:#99a8c8; font-size:.76rem; margin-top:8px; }
+
+.execution-decision { background:#10182a; border:1px solid #34466e; border-radius:10px; margin:16px 0; padding:13px; }
+.execution-decision .eyebrow { margin-bottom:5px; }
+.execution-decision strong { color:#72dfbd; display:block; font-size:.95rem; text-transform:capitalize; }
+.execution-decision p { color:#b8c4da; font-size:.82rem; line-height:1.4; margin:5px 0 0; }
+.execution-decision #execution-action { color:#edf1ff; font-weight:700; }

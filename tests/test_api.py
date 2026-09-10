@@ -119,6 +119,8 @@ def test_policy_assistant_api_returns_grounded_evidence():
     assert response.json()["policy_result"]["grounded"] is True
     assert response.json()["policy_result"]["evidence"][0]["department"] == "finance"
     assert response.json()["model_summary"]["status"] == "disabled"
+    assert response.json()["execution"]["status"] == "accepted_with_fallback"
+    assert response.json()["execution"]["response_source"] == "deterministic_evidence"
 
 
 def test_policy_assistant_provider_status_does_not_expose_configuration_secrets():
