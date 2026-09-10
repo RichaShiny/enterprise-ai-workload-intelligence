@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from src.execution.strategy_selector import StrategySelector
+from src.policy_assistant.service import ApprovedPolicyAssistant
 from src.telemetry.estimator import TelemetryEstimator
 from src.telemetry.schema import TelemetryEvent
 from src.telemetry.store import TelemetryStore
@@ -58,9 +59,18 @@ class OutcomeRequest(BaseModel):
     shadow_mode: bool = False
 
 
+class PolicyAssistantRequest(BaseModel):
+    question: str = Field(min_length=5, max_length=500)
+    department: str | None = None
+    complexity: str = "medium"
+    sensitivity: str = "medium"
+    risk_level: str = "medium"
+
+
 telemetry_store = TelemetryStore(
     os.getenv("TELEMETRY_PATH", "data/telemetry/events.jsonl")
 )
+policy_assistant = ApprovedPolicyAssistant()
 STATIC_DIR = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
@@ -218,6 +228,27 @@ def shadow_route(request: ShadowRouteRequest):
         "recommendation": recommendation,
         "next_step": "Execute your active strategy, then POST its content-free outcome to /telemetry/outcomes.",
         "note": "A shadow recommendation does not alter user traffic or prove a performance improvement.",
+    }
+
+
+@app.post("/policy-assistant")
+def answer_policy_question(request: PolicyAssistantRequest):
+    """Retrieve approved evidence and pair it with a reviewable route decision."""
+    policy_result = policy_assistant.answer(
+        question=request.question,
+        department=request.department,
+    )
+    routing = select_recommendation(RouteRequest(
+        task_type="retrieval",
+        complexity=request.complexity,
+        sensitivity=request.sensitivity,
+        risk_level=request.risk_level,
+    ))
+    return {
+        "question": request.question,
+        "routing": routing,
+        "policy_result": policy_result,
+        "privacy": "Only the submitted question is processed; this demo returns approved-policy evidence and stores no question history.",
     }
 
 

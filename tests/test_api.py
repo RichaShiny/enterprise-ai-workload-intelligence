@@ -102,3 +102,17 @@ def test_console_is_served_as_an_operator_interface():
 
     assert response.status_code == 200
     assert "Evaluate a workload" in response.text
+
+
+def test_policy_assistant_api_returns_grounded_evidence():
+    from fastapi.testclient import TestClient
+    from src.api.main import app
+
+    response = TestClient(app).post(
+        "/policy-assistant",
+        json={"question": "What approval is required for vendor spend above 25000?"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["policy_result"]["grounded"] is True
+    assert response.json()["policy_result"]["evidence"][0]["department"] == "finance"
