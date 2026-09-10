@@ -2,7 +2,6 @@ from dataclasses import asdict, dataclass
 from typing import Any
 import re
 
-from src.retrieval.index import RetrievalResult
 
 
 STOP_WORDS = {
@@ -99,6 +98,8 @@ class ApprovedPolicyAssistant:
         """Apply semantic ordering only to lexical candidates with usable evidence."""
         if not self.semantic_reranker or not evidence:
             return evidence
+        from src.retrieval.index import RetrievalResult
+
         results = [
             RetrievalResult(
                 document_id=item.document_id,
