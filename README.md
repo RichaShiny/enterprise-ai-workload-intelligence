@@ -42,6 +42,12 @@ The ledger intentionally accepts operational metadata only. It does not accept
 or persist prompts, customer content, or model outputs. A shadow disagreement is
 an evaluation signal, not a claim that the recommended strategy performed better.
 
+For low- and medium-risk workloads, the API uses observed telemetry only after
+there is enough evidence to meet conservative success and latency constraints.
+Until then, it reports that the choice came from the cold-start fallback policy.
+High-risk or highly sensitive workloads remain behind an explicit frontier
+guardrail rather than being relaxed from sparse history.
+
 ### API Routing Examples
 
 #### High-Risk Compliance Workload
