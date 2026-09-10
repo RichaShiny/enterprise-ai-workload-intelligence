@@ -27,57 +27,12 @@ class PolicyEvidence:
     relevance_score: float
 
 
-APPROVED_POLICIES = (
-    PolicyDocument(
-        document_id="finance-expense-retention",
-        title="Expense record retention",
-        department="finance",
-        version="2026.1",
-        text=(
-            "Approved expense reports, receipts, and reimbursement records must be retained "
-            "for seven years after the end of the fiscal year. Finance owns the retention schedule."
-        ),
-    ),
-    PolicyDocument(
-        document_id="finance-spend-approval",
-        title="Non-recurring spend approval",
-        department="finance",
-        version="2026.1",
-        text=(
-            "Non-recurring vendor spend above 5,000 dollars requires budget-owner approval "
-            "before a purchase order is issued. Spend above 25,000 dollars also requires Finance approval."
-        ),
-    ),
-    PolicyDocument(
-        document_id="security-access-review",
-        title="Privileged access review",
-        department="security",
-        version="2026.2",
-        text=(
-            "Privileged access is granted for a documented business purpose, reviewed every 90 days, "
-            "and removed within one business day when the purpose ends or employment changes."
-        ),
-    ),
-    PolicyDocument(
-        document_id="security-incident-reporting",
-        title="Security incident reporting",
-        department="security",
-        version="2026.2",
-        text=(
-            "Suspected security incidents must be reported immediately through the incident channel. "
-            "Do not include credentials, regulated personal data, or customer secrets in the report."
-        ),
-    ),
-    PolicyDocument(
-        document_id="people-flexible-work",
-        title="Flexible work eligibility",
-        department="people",
-        version="2026.1",
-        text=(
-            "Flexible work arrangements are agreed by the employee and manager and reviewed quarterly. "
-            "The arrangement must preserve team coverage, data-security requirements, and core meeting obligations."
-        ),
-    ),
+from src.policy_assistant.catalog import load_policy_catalog
+
+
+APPROVED_POLICIES = tuple(
+    PolicyDocument(**policy)
+    for policy in load_policy_catalog()
 )
 
 

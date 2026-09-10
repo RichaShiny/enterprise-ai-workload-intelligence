@@ -123,6 +123,18 @@ def test_policy_assistant_api_returns_grounded_evidence():
     assert response.json()["execution"]["response_source"] == "deterministic_evidence"
 
 
+def test_policy_catalog_exposes_release_metadata_without_policy_text():
+    from fastapi.testclient import TestClient
+    from src.api.main import app
+
+    response = TestClient(app).get("/policy-assistant/catalog")
+
+    assert response.status_code == 200
+    assert response.json()["catalog_version"] == "2026.2"
+    assert response.json()["documents"] == 5
+    assert "seven years" not in response.text
+
+
 def test_policy_assistant_provider_status_does_not_expose_configuration_secrets():
     from fastapi.testclient import TestClient
     from src.api.main import app

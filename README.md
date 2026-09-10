@@ -1821,3 +1821,9 @@ Provider unavailable        → Accept deterministic cited evidence extract
 ```
 
 A provider summary is accepted only after its citations are validated against the selected approved-policy evidence. The returned execution decision identifies the response source, verification state, routing recommendation, and next action without retaining the submitted question or policy body in operational telemetry.
+
+### Versioned policy catalog
+
+Approved policy content is loaded from `data/policies/approved_policies.json`, a versioned catalog rather than application code. The catalog adapter rejects missing fields, duplicate document IDs, and malformed releases before the service starts. `GET /policy-assistant/catalog` exposes only the catalog version, source name, and document count so operators can identify the active release without receiving policy text.
+
+For a production deployment, this adapter is the seam to replace with an authenticated document-management or policy-service connector. The retrieval, release gate, fingerprint, and answer lifecycle remain unchanged.
