@@ -16,15 +16,26 @@ The core routing experiments use **simulated tool classes and synthetic workload
 
 Separate model experiments use pretrained open models for retrieval, faithfulness evaluation, encoder fine-tuning, and generative LoRA adaptation.
 
-## Live Deployment
+## Local demo
 
-The routing API is containerized with Docker and deployed as a public FastAPI service on Render.
+The routing API is containerized with Docker and can be run locally without a hosting account or provider key:
 
-- **Live API:** https://enterprise-ai-workload-intelligence.onrender.com
-- **Interactive API Docs:** https://enterprise-ai-workload-intelligence.onrender.com/docs
-- **Health Check:** https://enterprise-ai-workload-intelligence.onrender.com/health
+```bash
+docker build -t enterprise-ai-workload-intelligence .
+docker run --rm -p 8000:8000 enterprise-ai-workload-intelligence
+```
 
-The deployed API exposes the workload-routing interface. Core routing benchmark outcomes remain simulation-based; the production path would replace synthetic tool-performance assumptions with observed telemetry collected through shadow traffic and controlled rollout.
+Then open [http://localhost:8000/console](http://localhost:8000/console) for the operator interface, or [http://localhost:8000/docs](http://localhost:8000/docs) for the API docs. The default mode uses the fictional approved-policy catalog and makes no external model calls.
+
+Try a cited policy response from a second terminal:
+
+```bash
+curl -X POST http://localhost:8000/policy-assistant \
+  -H "Content-Type: application/json" \
+  -d '{"question":"What approval is required for vendor spend above 25000?"}'
+```
+
+Core routing benchmark outcomes remain simulation-based; a production deployment would replace synthetic tool-performance assumptions with observed telemetry collected through shadow traffic and controlled rollout.
 
 ### Shadow-mode decision ledger
 
