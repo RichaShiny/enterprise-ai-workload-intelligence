@@ -106,6 +106,17 @@ def test_console_is_served_as_an_operator_interface():
     assert "OPTIONAL MODEL SUMMARY" in response.text
 
 
+def test_root_serves_the_public_operator_console():
+    from fastapi.testclient import TestClient
+    from src.api.main import app
+
+    response = TestClient(app).get("/")
+
+    assert response.status_code == 200
+    assert "Workload Intelligence" in response.text
+    assert "Evaluate a workload" in response.text
+
+
 def test_policy_assistant_api_returns_grounded_evidence():
     from fastapi.testclient import TestClient
     from src.api.main import app
