@@ -1809,3 +1809,15 @@ A cheap model can be the correct choice for one Work Unit, a cheap-to-frontier c
 The goal of this project is therefore not simply to minimize AI spend.
 
 It is to provide an experimental framework for studying **how enterprise AI systems allocate intelligence to complete work reliably and efficiently**, from workload characterization and routing through retrieval, verification, fine-tuning, causal evaluation, experimentation, and production safeguards.
+
+### Policy-answer decision lifecycle
+
+The policy assistant makes the final response path explicit after retrieval and routing:
+
+```text
+Weak or unsupported evidence → Escalate to policy owner
+Validated provider summary  → Accept cited model summary
+Provider unavailable        → Accept deterministic cited evidence extract
+```
+
+A provider summary is accepted only after its citations are validated against the selected approved-policy evidence. The returned execution decision identifies the response source, verification state, routing recommendation, and next action without retaining the submitted question or policy body in operational telemetry.

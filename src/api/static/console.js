@@ -88,11 +88,15 @@ byId('policy-form').addEventListener('submit', async (event) => {
     if (!response.ok) throw new Error('The policy evidence could not be retrieved.');
     const data = await response.json();
     const result = data.policy_result;
+    const execution = data.execution;
     byId('policy-empty').hidden = true;
     byId('policy-result').hidden = false;
     byId('grounding').textContent = result.grounded ? 'Grounded in approved evidence' : 'Abstained — insufficient evidence';
     byId('policy-answer').textContent = result.answer;
     byId('policy-reason').textContent = result.reason;
+    byId('execution-status').textContent = execution.status.replaceAll('_', ' ');
+    byId('execution-action').textContent = execution.next_action;
+    byId('execution-reason').textContent = `${execution.reason} Route: ${execution.route.recommended_strategy.replaceAll('_', ' ')}.`;
     const summary = data.model_summary || {};
     const summaryPanel = byId('model-summary');
     if (summary.status === 'generated') {

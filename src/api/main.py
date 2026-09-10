@@ -14,6 +14,7 @@ from src.policy_assistant.audit import PolicyChangeStore
 from src.policy_assistant.change_gate import evaluate_policy_change
 from src.policy_assistant.evaluation import evaluate_policy_assistant
 from src.policy_assistant.provider import PolicySummaryProvider
+from src.policy_assistant.lifecycle import decide_policy_response
 from src.policy_assistant.service import APPROVED_POLICIES, ApprovedPolicyAssistant, PolicyDocument
 from src.telemetry.estimator import TelemetryEstimator
 from src.telemetry.schema import TelemetryEvent
@@ -318,11 +319,13 @@ def answer_policy_question(request: PolicyAssistantRequest):
         sensitivity=request.sensitivity,
         risk_level=request.risk_level,
     ))
+    execution = decide_policy_response(policy_result, model_summary, routing)
     return {
         "question": request.question,
         "routing": routing,
         "policy_result": policy_result,
         "model_summary": model_summary,
+        "execution": execution,
         "privacy": (
             "This service stores no question history. When provider summaries are disabled, only "
             "deterministic approved-policy evidence is returned. When enabled, the submitted question "
