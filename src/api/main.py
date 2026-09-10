@@ -217,12 +217,8 @@ def summarize_events(events: list[dict]) -> dict:
 
 @app.get("/")
 def root():
-    return {
-        "service": "Enterprise AI Workload Intelligence",
-        "status": "running",
-        "docs": "/docs",
-        "health": "/health",
-    }
+    """Serve the public operator console; machine clients can use the documented API routes."""
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/console", include_in_schema=False)
