@@ -48,6 +48,11 @@ Until then, it reports that the choice came from the cold-start fallback policy.
 High-risk or highly sensitive workloads remain behind an explicit frontier
 guardrail rather than being relaxed from sparse history.
 
+Each routing response also returns a policy explanation: the configured
+success and latency limits, every candidate strategy, and the reason a
+candidate was excluded. This makes a recommendation reviewable instead of
+asking an operator to trust an opaque score.
+
 ### API Routing Examples
 
 #### High-Risk Compliance Workload

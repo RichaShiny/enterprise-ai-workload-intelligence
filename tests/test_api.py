@@ -57,6 +57,8 @@ def test_sufficient_observed_telemetry_informs_recommendation(tmp_path):
     assert decision["routing_source"] == "observed_telemetry"
     assert decision["sample_count"] == 30
     assert decision["estimated_cost_usd"] == 0.002
+    assert decision["policy"]["min_success_probability"] == 0.80
+    assert decision["candidates"][0]["strategy"] == "direct_small"
 
 
 def test_outcome_schema_excludes_customer_content():

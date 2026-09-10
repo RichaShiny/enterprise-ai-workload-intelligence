@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from src.telemetry.confidence import (
     calculate_evidence_confidence,
@@ -28,6 +28,7 @@ class StrategyDecision:
     match_level: str | None = None
     success_sample_count: int = 0
     conservative_success_probability: float | None = None
+    candidates: list[dict] = field(default_factory=list)
 
 
 class StrategySelector:
@@ -64,10 +65,19 @@ class StrategySelector:
             if prior.source == "observed_telemetry"
         ]
 
+        candidates = [
+            self._assess_candidate(strategy, prior)
+            for strategy, prior in priors.items()
+        ]
+
         feasible = [
             (strategy, prior)
             for strategy, prior in observed
-            if self._meets_constraints(prior)
+            if next(
+                candidate["eligible"]
+                for candidate in candidates
+                if candidate["strategy"] == strategy
+            )
         ]
 
         if feasible:
@@ -82,6 +92,7 @@ class StrategySelector:
             return self._decision(
                 strategy=strategy,
                 prior=prior,
+                candidates=candidates,
             )
 
         fallback_strategy = self._fallback_strategy(
@@ -95,7 +106,46 @@ class StrategySelector:
             strategy=fallback_strategy,
             prior=fallback_prior,
             source="fallback_policy",
+            candidates=candidates,
         )
+
+    def _assess_candidate(
+        self,
+        strategy: str,
+        prior: RoutingPrior,
+    ) -> dict:
+        """Make exclusions visible to an enterprise reviewer."""
+        confidence = calculate_evidence_confidence(prior)
+        reasons = []
+
+        if prior.source != "observed_telemetry":
+            reasons.append("Insufficient matching observed telemetry.")
+        elif confidence is None:
+            reasons.append("No completed success outcomes are available.")
+        elif confidence.lower_success_bound < self.min_success_probability:
+            reasons.append(
+                "Conservative success estimate is below the policy minimum."
+            )
+
+        if (
+            prior.expected_latency_ms is not None
+            and prior.expected_latency_ms > self.max_latency_ms
+        ):
+            reasons.append("Expected latency exceeds the policy limit.")
+
+        return {
+            "strategy": strategy,
+            "eligible": not reasons,
+            "reasons": reasons,
+            "sample_count": prior.sample_count,
+            "match_level": prior.match_level,
+            "success_probability": prior.success_probability,
+            "conservative_success_probability": (
+                confidence.lower_success_bound if confidence else None
+            ),
+            "expected_latency_ms": prior.expected_latency_ms,
+            "estimated_cost_usd": prior.estimated_cost_usd,
+        }
 
     def _meets_constraints(
         self,
@@ -159,6 +209,7 @@ class StrategySelector:
         strategy: str,
         prior: RoutingPrior,
         source: str | None = None,
+        candidates: list[dict] | None = None,
     ) -> StrategyDecision:
         confidence = calculate_evidence_confidence(
             prior
@@ -183,4 +234,5 @@ class StrategySelector:
             conservative_success_probability=(
                 conservative_success_probability
             ),
+            candidates=candidates or [],
         )
