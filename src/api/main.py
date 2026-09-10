@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from src.execution.strategy_selector import StrategySelector
 from src.policy_assistant.audit import PolicyChangeStore
 from src.policy_assistant.change_gate import evaluate_policy_change
+from src.policy_assistant.catalog import catalog_metadata
 from src.policy_assistant.evaluation import evaluate_policy_assistant
 from src.policy_assistant.provider import PolicySummaryProvider
 from src.policy_assistant.lifecycle import decide_policy_response
@@ -257,6 +258,15 @@ def shadow_route(request: ShadowRouteRequest):
 def policy_assistant_evaluation():
     """Run the fixed, fictional policy benchmark for the operator console."""
     return evaluate_policy_assistant(policy_assistant)
+
+
+@app.get("/policy-assistant/catalog")
+def policy_assistant_catalog():
+    """Return safe metadata for the reviewed policy release currently in use."""
+    return {
+        **catalog_metadata(),
+        "privacy": "Catalog metadata excludes policy text. Production sources must be access-controlled.",
+    }
 
 
 @app.get("/policy-assistant/provider-status")
