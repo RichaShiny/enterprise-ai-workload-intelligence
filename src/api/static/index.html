@@ -78,6 +78,11 @@
         <div id="policy-empty" class="policy-empty">Ask a policy question to retrieve cited, approved evidence. The assistant abstains when the evidence is weak.</div>
         <div id="policy-result" hidden><span id="grounding" class="source"></span><p id="policy-answer" class="policy-answer"></p><p id="policy-reason" class="policy-reason"></p><div id="policy-evidence" class="policy-evidence"></div></div>
         <div class="policy-evaluation"><div><p class="eyebrow">QUALITY CHECK</p><p id="evaluation-summary">Run the fixed demo benchmark to inspect retrieval and abstention behavior.</p></div><button id="run-evaluation" type="button">Run demo evaluation <span>→</span></button></div>
+        <section class="audit-history" aria-live="polite">
+          <div class="audit-heading"><div><p class="eyebrow">RELEASE REVIEW</p><h3>Recent policy-change decisions</h3></div><button id="refresh-history" type="button">Refresh history <span>↻</span></button></div>
+          <p id="audit-summary">Loading content-light release decisions…</p>
+          <div id="audit-records" class="audit-records"></div>
+        </section>
       </section>
 
       <footer><span>Operational metadata only</span><span>·</span><span>Use shadow recommendations to evaluate policy before changing live traffic.</span></footer>

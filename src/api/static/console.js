@@ -100,3 +100,55 @@ byId('run-evaluation').addEventListener('click', async () => {
     button.firstChild.textContent = 'Run demo evaluation ';
   }
 });
+
+
+function formatAuditTime(value) {
+  if (!value) return 'Unknown time';
+  const date = new Date(value);
+  return Number.isNaN(date.valueOf()) ? value : date.toLocaleString();
+}
+
+function renderAuditHistory(records) {
+  const container = byId('audit-records');
+  container.replaceChildren();
+  if (!records.length) {
+    byId('audit-summary').textContent = 'No policy revisions have been evaluated yet.';
+    return;
+  }
+  byId('audit-summary').textContent = `${records.length} recent release decision${records.length === 1 ? '' : 's'} · policy content is not retained here.`;
+  records.forEach((record) => {
+    const article = document.createElement('article');
+    article.className = `audit-record ${record.passed ? 'passed' : 'blocked'}`;
+    const heading = document.createElement('div');
+    const status = document.createElement('strong');
+    status.textContent = record.passed ? 'Passed release gate' : 'Blocked by release gate';
+    const timestamp = document.createElement('span');
+    timestamp.textContent = formatAuditTime(record.created_at);
+    heading.append(status, timestamp);
+    const details = document.createElement('p');
+    const changed = [...(record.improvements || []), ...(record.regressions || [])];
+    details.textContent = record.note || (changed.length ? `Metrics reviewed: ${changed.join(', ').replaceAll('_', ' ')}.` : 'No metric change recorded.');
+    article.append(heading, details);
+    container.append(article);
+  });
+}
+
+async function loadPolicyChangeHistory() {
+  const button = byId('refresh-history');
+  button.disabled = true;
+  button.firstChild.textContent = 'Refreshing… ';
+  try {
+    const response = await fetch('/policy-assistant/change-history');
+    if (!response.ok) throw new Error('Policy change history could not be loaded.');
+    const data = await response.json();
+    renderAuditHistory(data.records || []);
+  } catch (error) {
+    byId('audit-summary').textContent = error.message;
+  } finally {
+    button.disabled = false;
+    button.firstChild.textContent = 'Refresh history ';
+  }
+}
+
+byId('refresh-history').addEventListener('click', loadPolicyChangeHistory);
+loadPolicyChangeHistory();

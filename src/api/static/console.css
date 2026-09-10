@@ -18,3 +18,19 @@ footer { display:flex; gap:8px; justify-content:center; margin-top:30px; color:#
 .policy-evaluation p { margin: 0.25rem 0 0; color: var(--muted); }
 .policy-evaluation button { width: auto; white-space: nowrap; }
 @media (max-width: 680px) { .policy-evaluation { align-items: flex-start; flex-direction: column; } }
+
+
+.audit-history { border-top: 1px solid #263047; margin-top: 1.35rem; padding-top: 1.2rem; }
+.audit-heading { align-items: center; display: flex; justify-content: space-between; gap: 1rem; }
+.audit-heading h3 { font-size: 1rem; margin: 0; }
+.audit-heading button { padding: 9px 12px; width: auto; white-space: nowrap; }
+#audit-summary { color: #94a2c1; font-size: .82rem; margin: .7rem 0; }
+.audit-records { display: grid; gap: 8px; }
+.audit-record { background: #0b1120; border: 1px solid #2e3b57; border-left-width: 3px; border-radius: 9px; padding: 11px 13px; }
+.audit-record.passed { border-left-color: #60edbd; }
+.audit-record.blocked { border-left-color: #ff9eb1; }
+.audit-record div { align-items: baseline; display: flex; gap: 10px; justify-content: space-between; }
+.audit-record strong { font-size: .84rem; }
+.audit-record span { color: #8290ad; font-size: .72rem; }
+.audit-record p { color: #aeb9d2; font-size: .8rem; line-height: 1.35; margin: 6px 0 0; }
+@media(max-width: 550px) { .audit-heading, .audit-record div { align-items: flex-start; flex-direction: column; gap: 5px; } }
