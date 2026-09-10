@@ -73,7 +73,9 @@ demo content; production use would connect an access-controlled policy source.
 The policy assistant can optionally use the OpenAI Responses API to turn already
 selected approved evidence into a short, cited summary. Retrieval, citations,
 and abstention remain deterministic; the provider is never asked to select a
-source or answer when the evidence workflow abstains. It is disabled by default.
+source or answer when the evidence workflow abstains. Before a provider summary
+is shown, the service verifies it cites only documents and versions from the
+selected evidence. It is disabled by default.
 
 To enable it in a server environment, set `OPENAI_API_KEY`,
 `POLICY_SUMMARY_ENABLED=true`, and optionally `POLICY_SUMMARY_MODEL`. Each call
