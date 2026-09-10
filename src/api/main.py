@@ -17,7 +17,6 @@ from src.policy_assistant.evaluation import evaluate_policy_assistant
 from src.policy_assistant.provider import PolicySummaryProvider
 from src.policy_assistant.lifecycle import decide_policy_response
 from src.policy_assistant.service import APPROVED_POLICIES, ApprovedPolicyAssistant, PolicyDocument
-from src.retrieval.ranker import SemanticReranker
 from src.telemetry.estimator import TelemetryEstimator
 from src.telemetry.schema import TelemetryEvent
 from src.telemetry.store import TelemetryStore
@@ -91,9 +90,17 @@ telemetry_store = TelemetryStore(
     os.getenv("TELEMETRY_PATH", "data/telemetry/events.jsonl")
 )
 semantic_reranking_enabled = os.getenv("POLICY_SEMANTIC_RERANKING_ENABLED", "false").lower() == "true"
-policy_assistant = ApprovedPolicyAssistant(
-    semantic_reranker=SemanticReranker() if semantic_reranking_enabled else None
-)
+
+
+def build_policy_assistant() -> ApprovedPolicyAssistant:
+    """Avoid loading the embedding runtime unless semantic reranking is enabled."""
+    if not semantic_reranking_enabled:
+        return ApprovedPolicyAssistant()
+    from src.retrieval.ranker import SemanticReranker
+    return ApprovedPolicyAssistant(semantic_reranker=SemanticReranker())
+
+
+policy_assistant = build_policy_assistant()
 policy_summary_provider = PolicySummaryProvider()
 policy_change_store = PolicyChangeStore(
     os.getenv("POLICY_CHANGE_PATH", "data/policy_changes/decisions.jsonl")
