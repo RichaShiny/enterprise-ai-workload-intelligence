@@ -10,8 +10,9 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from src.execution.strategy_selector import StrategySelector
+from src.policy_assistant.change_gate import evaluate_policy_change
 from src.policy_assistant.evaluation import evaluate_policy_assistant
-from src.policy_assistant.service import ApprovedPolicyAssistant
+from src.policy_assistant.service import APPROVED_POLICIES, ApprovedPolicyAssistant, PolicyDocument
 from src.telemetry.estimator import TelemetryEstimator
 from src.telemetry.schema import TelemetryEvent
 from src.telemetry.store import TelemetryStore
@@ -66,6 +67,18 @@ class PolicyAssistantRequest(BaseModel):
     complexity: str = "medium"
     sensitivity: str = "medium"
     risk_level: str = "medium"
+
+
+class PolicyDocumentInput(BaseModel):
+    document_id: str = Field(min_length=3, max_length=100)
+    title: str = Field(min_length=3, max_length=200)
+    department: str = Field(min_length=2, max_length=100)
+    version: str = Field(min_length=1, max_length=50)
+    text: str = Field(min_length=20, max_length=10_000)
+
+
+class PolicyChangeRequest(BaseModel):
+    candidate_policies: list[PolicyDocumentInput] = Field(min_length=1, max_length=100)
 
 
 telemetry_store = TelemetryStore(
@@ -236,6 +249,13 @@ def shadow_route(request: ShadowRouteRequest):
 def policy_assistant_evaluation():
     """Run the fixed, fictional policy benchmark for the operator console."""
     return evaluate_policy_assistant(policy_assistant)
+
+
+@app.post("/policy-assistant/change-gate")
+def policy_assistant_change_gate(request: PolicyChangeRequest):
+    """Compare a proposed policy revision with the current release baseline."""
+    candidate_policies = tuple(PolicyDocument(**item.model_dump()) for item in request.candidate_policies)
+    return evaluate_policy_change(candidate_policies, baseline_policies=APPROVED_POLICIES)
 
 
 @app.post("/policy-assistant")

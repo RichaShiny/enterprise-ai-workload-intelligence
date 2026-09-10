@@ -127,3 +127,26 @@ def test_policy_assistant_evaluation_endpoint_exposes_demo_quality_metrics():
     assert response.status_code == 200
     assert response.json()["retrieval_accuracy"] == 1.0
     assert response.json()["safe_abstention_rate"] == 1.0
+
+
+def test_policy_change_gate_api_reports_a_release_decision():
+    from fastapi.testclient import TestClient
+    from src.api.main import app
+    from src.policy_assistant.service import APPROVED_POLICIES
+
+    response = TestClient(app).post(
+        "/policy-assistant/change-gate",
+        json={"candidate_policies": [
+            {
+                "document_id": policy.document_id,
+                "title": policy.title,
+                "department": policy.department,
+                "version": policy.version,
+                "text": policy.text,
+            }
+            for policy in APPROVED_POLICIES
+        ]},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["passed"] is True
