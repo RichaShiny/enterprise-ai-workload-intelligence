@@ -21,3 +21,14 @@ def test_policy_assistant_abstains_without_matching_evidence():
     assert result["grounded"] is False
     assert result["abstained"] is True
     assert result["evidence"] == []
+
+
+def test_policy_evaluation_reports_retrieval_and_safe_abstention():
+    from src.policy_assistant.evaluation import evaluate_policy_assistant
+
+    report = evaluate_policy_assistant()
+
+    assert report["cases"] == 5
+    assert report["retrieval_accuracy"] == 1.0
+    assert report["safe_abstention_rate"] == 1.0
+    assert report["overall_accuracy"] == 1.0

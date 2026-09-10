@@ -83,3 +83,20 @@ byId('policy-form').addEventListener('submit', async (event) => {
     button.firstChild.textContent = 'Retrieve approved evidence ';
   }
 });
+
+byId('run-evaluation').addEventListener('click', async () => {
+  const button = byId('run-evaluation');
+  button.disabled = true;
+  button.firstChild.textContent = 'Running… ';
+  try {
+    const response = await fetch('/policy-assistant/evaluation');
+    if (!response.ok) throw new Error('The demo evaluation could not be run.');
+    const data = await response.json();
+    byId('evaluation-summary').textContent = `${Math.round(data.retrieval_accuracy * 100)}% retrieval accuracy · ${Math.round(data.safe_abstention_rate * 100)}% safe abstention · ${data.cases} fixed demo cases.`;
+  } catch (error) {
+    byId('evaluation-summary').textContent = error.message;
+  } finally {
+    button.disabled = false;
+    button.firstChild.textContent = 'Run demo evaluation ';
+  }
+});

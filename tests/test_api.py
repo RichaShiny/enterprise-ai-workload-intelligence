@@ -116,3 +116,14 @@ def test_policy_assistant_api_returns_grounded_evidence():
     assert response.status_code == 200
     assert response.json()["policy_result"]["grounded"] is True
     assert response.json()["policy_result"]["evidence"][0]["department"] == "finance"
+
+
+def test_policy_assistant_evaluation_endpoint_exposes_demo_quality_metrics():
+    from fastapi.testclient import TestClient
+    from src.api.main import app
+
+    response = TestClient(app).get("/policy-assistant/evaluation")
+
+    assert response.status_code == 200
+    assert response.json()["retrieval_accuracy"] == 1.0
+    assert response.json()["safe_abstention_rate"] == 1.0
