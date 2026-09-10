@@ -1827,3 +1827,7 @@ A provider summary is accepted only after its citations are validated against th
 Approved policy content is loaded from `data/policies/approved_policies.json`, a versioned catalog rather than application code. The catalog adapter rejects missing fields, duplicate document IDs, and malformed releases before the service starts. `GET /policy-assistant/catalog` exposes only the catalog version, source name, and document count so operators can identify the active release without receiving policy text.
 
 For a production deployment, this adapter is the seam to replace with an authenticated document-management or policy-service connector. The retrieval, release gate, fingerprint, and answer lifecycle remain unchanged.
+
+### Semantic policy reranking
+
+The policy assistant retrieves a small lexical candidate set first, then can rerank those candidates with the repository’s `all-MiniLM-L6-v2` semantic reranker. Set `POLICY_SEMANTIC_RERANKING_ENABLED=true` in the service environment to enable it. Reranking changes evidence order only: it cannot introduce a new policy source, bypass the evidence threshold, or override abstention. The active mode is returned as policy-response metadata and through `GET /policy-assistant/catalog`.

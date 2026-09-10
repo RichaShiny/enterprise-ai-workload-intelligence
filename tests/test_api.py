@@ -132,6 +132,7 @@ def test_policy_catalog_exposes_release_metadata_without_policy_text():
     assert response.status_code == 200
     assert response.json()["catalog_version"] == "2026.2"
     assert response.json()["documents"] == 5
+    assert response.json()["reranking"] == "lexical"
     assert "seven years" not in response.text
 
 
