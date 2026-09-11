@@ -73,6 +73,13 @@ class PolicyAssistantRequest(BaseModel):
     risk_level: str = "medium"
 
 
+class DecisionAssistantRequest(PolicyAssistantRequest):
+    """A general operator question, evaluated within this demo's explicit scope."""
+    task_type: str = "retrieval"
+    min_success_probability: float = Field(default=0.80, gt=0, le=1)
+    max_latency_ms: float = Field(default=6000, gt=0)
+
+
 class PolicyDocumentInput(BaseModel):
     document_id: str = Field(min_length=3, max_length=100)
     title: str = Field(min_length=3, max_length=200)
@@ -349,6 +356,62 @@ def answer_policy_question(request: PolicyAssistantRequest):
             "deterministic approved-policy evidence is returned. When enabled, the submitted question "
             "and selected approved-policy excerpts are sent to the configured provider for a non-stored summary."
         ),
+    }
+
+
+ROUTING_TERMS = frozenset({
+    "route", "routing", "model", "cost", "cheap", "cheaper", "latency", "slow",
+    "fast", "risk", "sensitive", "privacy", "strategy", "workload", "provider",
+    "frontier", "success", "reliable", "reliability",
+})
+
+
+@app.post("/decision-assistant")
+def answer_decision_question(request: DecisionAssistantRequest):
+    """Answer policy questions or explain a workload recommendation without pretending to be a general chatbot."""
+    policy_result = policy_assistant.answer(question=request.question, department=request.department)
+    if policy_result["grounded"]:
+        policy_response = answer_policy_question(request)
+        return {"kind": "policy", **policy_response}
+
+    question_terms = set(request.question.lower().replace("?", " ").replace(",", " ").split())
+    if question_terms & ROUTING_TERMS:
+        routing = select_recommendation(RouteRequest(
+            task_type=request.task_type,
+            complexity=request.complexity,
+            sensitivity=request.sensitivity,
+            risk_level=request.risk_level,
+            min_success_probability=request.min_success_probability,
+            max_latency_ms=request.max_latency_ms,
+        ))
+        strategy = routing["recommended_strategy"].replace("_", " ")
+        return {
+            "kind": "routing",
+            "question": request.question,
+            "answer": f"For the current {request.task_type.replace('_', ' ')} workload, the recommended path is {strategy}.",
+            "reason": routing["note"],
+            "routing": routing,
+            "execution": {
+                "status": "review_recommendation",
+                "next_action": "Review the candidate assessment, then evaluate the workload before changing live traffic.",
+                "reason": "This is a deterministic recommendation based on the selected operating limits and available telemetry.",
+                "route": routing,
+            },
+            "privacy": "This service stores no question history or model output.",
+        }
+
+    return {
+        "kind": "needs_context",
+        "question": request.question,
+        "answer": "I can accept any question, but this demo only gives grounded answers about approved policy or the current AI workload decision.",
+        "reason": "No approved policy evidence matched, and the question did not ask about routing, cost, latency, risk, or model strategy.",
+        "execution": {
+            "status": "needs_context",
+            "next_action": "Ask about an approved policy, or ask how the current workload should be routed.",
+            "reason": "The assistant will not invent an answer outside its approved evidence and decision scope.",
+            "route": None,
+        },
+        "privacy": "This service stores no question history or model output.",
     }
 
 
