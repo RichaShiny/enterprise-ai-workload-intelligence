@@ -81,22 +81,27 @@ byId('policy-form').addEventListener('submit', async (event) => {
   button.disabled = true;
   button.firstChild.textContent = 'Retrieving… ';
   try {
-    const response = await fetch('/policy-assistant', {
+    const value = (id) => byId(id).value;
+    const response = await fetch('/decision-assistant', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({question: byId('policy-question').value, department: byId('policy-department').value || null}),
+      body: JSON.stringify({
+        question: value('policy-question'), department: value('policy-department') || null,
+        task_type: value('task_type'), complexity: value('complexity'), sensitivity: value('sensitivity'), risk_level: value('risk_level'),
+        min_success_probability: Number(value('min_success_probability')), max_latency_ms: Number(value('max_latency_ms')),
+      }),
     });
-    if (!response.ok) throw new Error('The policy evidence could not be retrieved.');
+    if (!response.ok) throw new Error('The decision question could not be answered.');
     const data = await response.json();
-    const result = data.policy_result;
     const execution = data.execution;
     byId('policy-empty').hidden = true;
     byId('policy-result').hidden = false;
-    byId('grounding').textContent = result.grounded ? 'Grounded in approved evidence' : 'Abstained — insufficient evidence';
-    byId('policy-answer').textContent = result.answer;
-    byId('policy-reason').textContent = `${result.reason} Ranked with ${result.retrieval.ranking_method} retrieval.`;
+    const result = data.policy_result;
+    byId('grounding').textContent = data.kind === 'policy' ? (result.grounded ? 'Grounded in approved evidence' : 'Abstained — insufficient evidence') : data.kind === 'routing' ? 'Current workload recommendation' : 'Scope limit reached';
+    byId('policy-answer').textContent = result?.answer || data.answer;
+    byId('policy-reason').textContent = result ? `${result.reason} Ranked with ${result.retrieval.ranking_method} retrieval.` : data.reason;
     byId('execution-status').textContent = execution.status.replaceAll('_', ' ');
     byId('execution-action').textContent = execution.next_action;
-    byId('execution-reason').textContent = `${execution.reason} Route: ${execution.route.recommended_strategy.replaceAll('_', ' ')}.`;
+    byId('execution-reason').textContent = execution.route ? `${execution.reason} Route: ${execution.route.recommended_strategy.replaceAll('_', ' ')}.` : execution.reason;
     const summary = data.model_summary || {};
     const summaryPanel = byId('model-summary');
     if (summary.status === 'generated') {
@@ -108,13 +113,20 @@ byId('policy-form').addEventListener('submit', async (event) => {
       byId('model-summary-answer').textContent = '';
       byId('model-summary-note').textContent = '';
     }
-    byId('policy-evidence').innerHTML = result.evidence.map((item) => `<article><strong>${item.title}</strong><span>${item.department} · version ${item.version} · relevance ${Math.round(item.relevance_score * 100)}%</span><p>${item.excerpt}</p></article>`).join('');
+    if (result?.evidence?.length) {
+      byId('policy-evidence').innerHTML = result.evidence.map((item) => `<article><strong>${item.title}</strong><span>${item.department} · version ${item.version} · relevance ${Math.round(item.relevance_score * 100)}%</span><p>${item.excerpt}</p></article>`).join('');
+    } else if (data.kind === 'routing') {
+      const routing = data.routing;
+      byId('policy-evidence').innerHTML = `<article><strong>Current operating limits</strong><span>${routing.routing_source.replaceAll('_', ' ')}</span><p>Minimum success ${formatPercent(routing.policy?.min_success_probability)} · maximum latency ${formatNumber(routing.policy?.max_latency_ms, ' ms')} · ${routing.sample_count || 0} matching executions.</p></article>`;
+    } else {
+      byId('policy-evidence').innerHTML = '';
+    }
   } catch (error) {
     byId('policy-empty').hidden = false;
     byId('policy-empty').textContent = error.message;
   } finally {
     button.disabled = false;
-    button.firstChild.textContent = 'Retrieve approved evidence ';
+    button.firstChild.textContent = 'Ask the decision layer ';
   }
 });
 

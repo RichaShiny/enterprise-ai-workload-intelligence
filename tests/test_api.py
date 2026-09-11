@@ -134,6 +134,42 @@ def test_policy_assistant_api_returns_grounded_evidence():
     assert response.json()["execution"]["response_source"] == "deterministic_evidence"
 
 
+def test_decision_assistant_answers_routing_questions_from_current_limits():
+    from fastapi.testclient import TestClient
+    from src.api.main import app
+
+    response = TestClient(app).post(
+        "/decision-assistant",
+        json={
+            "question": "Can this workload use a cheaper model and still meet latency?",
+            "task_type": "summarization",
+            "complexity": "medium",
+            "sensitivity": "medium",
+            "risk_level": "medium",
+            "min_success_probability": 0.8,
+            "max_latency_ms": 6000,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["kind"] == "routing"
+    assert response.json()["routing"]["policy"]["max_latency_ms"] == 6000
+
+
+def test_decision_assistant_limits_unrelated_questions_instead_of_inventing_an_answer():
+    from fastapi.testclient import TestClient
+    from src.api.main import app
+
+    response = TestClient(app).post(
+        "/decision-assistant",
+        json={"question": "What is the capital of France?"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["kind"] == "needs_context"
+    assert response.json()["execution"]["route"] is None
+
+
 def test_policy_catalog_exposes_release_metadata_without_policy_text():
     from fastapi.testclient import TestClient
     from src.api.main import app
