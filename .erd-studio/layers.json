@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "layers": [
+    {
+      "id": "simulation",
+      "label": "Synthetic evaluation",
+      "abbreviation": "SIM",
+      "color": "#4f46e5",
+      "creatable": true,
+      "order": 1
+    },
+    {
+      "id": "runtime",
+      "label": "Runtime telemetry",
+      "abbreviation": "RUN",
+      "color": "#0d9488",
+      "creatable": true,
+      "order": 2
+    }
+  ]
+}

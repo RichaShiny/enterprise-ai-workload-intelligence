@@ -1,0 +1,89 @@
+{
+  "name": "telemetry_events",
+  "description": "Runtime records from src/telemetry/schema.py persisted to data/telemetry/events.jsonl. No unique event key is currently stored.",
+  "grain": "One logged execute_auto result; workload_id can repeat.",
+  "modelRole": "transaction-fact",
+  "columns": [
+    {
+      "name": "workload_id",
+      "dataType": "STRING",
+      "description": "Caller-supplied runtime identifier; no established foreign key to synthetic event_id"
+    },
+    {
+      "name": "task_type",
+      "dataType": "STRING",
+      "description": "Task type"
+    },
+    {
+      "name": "complexity",
+      "dataType": "STRING",
+      "description": "Complexity"
+    },
+    {
+      "name": "sensitivity",
+      "dataType": "STRING",
+      "description": "Sensitivity"
+    },
+    {
+      "name": "strategy",
+      "dataType": "STRING",
+      "description": "Strategy",
+      "isForeignKey": true
+    },
+    {
+      "name": "model",
+      "dataType": "STRING",
+      "description": "Final executor model"
+    },
+    {
+      "name": "latency_ms",
+      "dataType": "DOUBLE",
+      "description": "Final executor latency, not total cascade latency"
+    },
+    {
+      "name": "input_tokens",
+      "dataType": "INTEGER",
+      "description": "Input tokens (nullable)"
+    },
+    {
+      "name": "output_tokens",
+      "dataType": "INTEGER",
+      "description": "Output tokens (nullable)"
+    },
+    {
+      "name": "total_tokens",
+      "dataType": "INTEGER",
+      "description": "Total tokens (nullable)"
+    },
+    {
+      "name": "escalated",
+      "dataType": "BOOLEAN",
+      "description": "Escalated"
+    },
+    {
+      "name": "verification_passed",
+      "dataType": "BOOLEAN",
+      "description": "Verification passed (nullable)"
+    },
+    {
+      "name": "verification_confidence",
+      "dataType": "DOUBLE",
+      "description": "Verification confidence (nullable)"
+    },
+    {
+      "name": "estimated_cost_usd",
+      "dataType": "DOUBLE",
+      "description": "Estimated cost usd (nullable)"
+    },
+    {
+      "name": "success",
+      "dataType": "BOOLEAN",
+      "description": "Currently copied from verification_passed when present; not an independent final-answer quality label (nullable)"
+    },
+    {
+      "name": "timestamp",
+      "dataType": "STRING",
+      "description": "UTC ISO timestamp stored as a string"
+    }
+  ]
+}

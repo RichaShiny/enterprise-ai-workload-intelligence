@@ -1,0 +1,14 @@
+{
+  "name": "routing_strategies",
+  "description": "Logical lookup of STRATEGIES in src/execution/strategy_selector.py: direct_small, direct_frontier, verified_cascade. Not a persisted table.",
+  "grain": "One supported execution strategy.",
+  "modelRole": "reference",
+  "columns": [
+    {
+      "name": "strategy",
+      "dataType": "STRING",
+      "description": "Strategy",
+      "isPrimaryKey": true
+    }
+  ]
+}

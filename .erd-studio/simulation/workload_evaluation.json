@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 5,
+  "domain": "workload_evaluation",
+  "layer": "simulation",
+  "description": "Existing synthetic event and counterfactual dataset relationships. Keys are logical intent, not enforced SQL constraints.",
+  "logical": {
+    "models": [
+      "workload_events",
+      "counterfactual_outcomes",
+      "simulated_tools"
+    ],
+    "relationships": [
+      {
+        "fromModel": "counterfactual_outcomes",
+        "fromColumn": "event_id",
+        "toModel": "workload_events",
+        "toColumn": "event_id",
+        "cardinality": "many-to-one"
+      },
+      {
+        "fromModel": "counterfactual_outcomes",
+        "fromColumn": "tool",
+        "toModel": "simulated_tools",
+        "toColumn": "tool",
+        "cardinality": "many-to-one"
+      },
+      {
+        "fromModel": "counterfactual_outcomes",
+        "fromColumn": "observed_tool",
+        "toModel": "simulated_tools",
+        "toColumn": "tool",
+        "cardinality": "many-to-one"
+      },
+      {
+        "fromModel": "workload_events",
+        "fromColumn": "tool",
+        "toModel": "simulated_tools",
+        "toColumn": "tool",
+        "cardinality": "many-to-one"
+      }
+    ]
+  },
+  "viewConfig": {
+    "showFkEdges": true,
+    "positions": {
+      "workload_events": {
+        "x": 0,
+        "y": 80
+      },
+      "counterfactual_outcomes": {
+        "x": 440,
+        "y": 80
+      },
+      "simulated_tools": {
+        "x": 880,
+        "y": 80
+      }
+    }
+  }
+}

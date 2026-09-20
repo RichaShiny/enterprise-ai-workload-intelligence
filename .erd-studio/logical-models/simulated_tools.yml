@@ -1,0 +1,14 @@
+{
+  "name": "simulated_tools",
+  "description": "Logical lookup of TOOLS in src/simulation/counterfactuals.py. These are simulated tool classes, not measured provider benchmarks or runtime model IDs.",
+  "grain": "One simulated tool class.",
+  "modelRole": "reference",
+  "columns": [
+    {
+      "name": "tool",
+      "dataType": "STRING",
+      "description": "Tool",
+      "isPrimaryKey": true
+    }
+  ]
+}

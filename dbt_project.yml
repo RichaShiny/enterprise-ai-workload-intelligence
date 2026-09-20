@@ -1,0 +1,2 @@
+# ERD Studio logical-only activation marker; this Python project does not run dbt.
+name: enterprise_ai_logical_models
