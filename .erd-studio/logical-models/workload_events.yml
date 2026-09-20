@@ -1,0 +1,105 @@
+{
+  "name": "workload_events",
+  "description": "Synthetic records from src/workloads/schema.py; data/raw/enterprise_workload_events.csv. Key intent is documented, not a database constraint.",
+  "grain": "One synthetic workload event per event_id within a generated dataset.",
+  "modelRole": "transaction-fact",
+  "columns": [
+    {
+      "name": "event_id",
+      "dataType": "STRING",
+      "description": "Event id",
+      "isPrimaryKey": true
+    },
+    {
+      "name": "department",
+      "dataType": "STRING",
+      "description": "Department"
+    },
+    {
+      "name": "workflow",
+      "dataType": "STRING",
+      "description": "Workflow"
+    },
+    {
+      "name": "task_type",
+      "dataType": "STRING",
+      "description": "Task type"
+    },
+    {
+      "name": "tool",
+      "dataType": "STRING",
+      "description": "Tool",
+      "isForeignKey": true
+    },
+    {
+      "name": "model",
+      "dataType": "STRING",
+      "description": "Model"
+    },
+    {
+      "name": "agent_type",
+      "dataType": "STRING",
+      "description": "Agent type"
+    },
+    {
+      "name": "complexity",
+      "dataType": "STRING",
+      "description": "Complexity"
+    },
+    {
+      "name": "sensitivity",
+      "dataType": "STRING",
+      "description": "Sensitivity"
+    },
+    {
+      "name": "business_priority",
+      "dataType": "INTEGER",
+      "description": "Business priority"
+    },
+    {
+      "name": "tokens_in",
+      "dataType": "INTEGER",
+      "description": "Tokens in"
+    },
+    {
+      "name": "tokens_out",
+      "dataType": "INTEGER",
+      "description": "Tokens out"
+    },
+    {
+      "name": "latency_ms",
+      "dataType": "DOUBLE",
+      "description": "Latency ms"
+    },
+    {
+      "name": "estimated_cost_usd",
+      "dataType": "DOUBLE",
+      "description": "Estimated cost usd"
+    },
+    {
+      "name": "human_time_minutes",
+      "dataType": "DOUBLE",
+      "description": "Human time minutes"
+    },
+    {
+      "name": "human_corrections",
+      "dataType": "INTEGER",
+      "description": "Human corrections"
+    },
+    {
+      "name": "task_success",
+      "dataType": "BOOLEAN",
+      "description": "Task success"
+    },
+    {
+      "name": "quality_score",
+      "dataType": "DOUBLE",
+      "description": "Quality score"
+    },
+    {
+      "name": "notes",
+      "dataType": "STRING",
+      "description": "Notes (nullable)"
+    }
+  ]
+}

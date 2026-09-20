@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 5,
+  "domain": "execution_telemetry",
+  "layer": "runtime",
+  "description": "Runtime strategy and JSONL telemetry. No join to synthetic workloads is asserted.",
+  "logical": {
+    "models": [
+      "routing_strategies",
+      "telemetry_events"
+    ],
+    "relationships": [
+      {
+        "fromModel": "telemetry_events",
+        "fromColumn": "strategy",
+        "toModel": "routing_strategies",
+        "toColumn": "strategy",
+        "cardinality": "many-to-one"
+      }
+    ]
+  },
+  "viewConfig": {
+    "showFkEdges": true,
+    "positions": {
+      "routing_strategies": {
+        "x": 0,
+        "y": 80
+      },
+      "telemetry_events": {
+        "x": 440,
+        "y": 80
+      }
+    }
+  }
+}
