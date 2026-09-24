@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from src.evaluation.release_audit import RoutingReleaseStore
 from src.evaluation.routing_release import evaluate_routing_policy_change
+from src.execution.delegation_policy import evaluate_delegation_policy
 from src.execution.strategy_selector import StrategySelector
 from src.policy_assistant.audit import PolicyChangeStore
 from src.policy_assistant.change_gate import evaluate_policy_change
@@ -124,6 +125,15 @@ class RoutingReleaseRequest(BaseModel):
     default_tolerance: float = Field(default=0.02, ge=0)
     metric_tolerances: dict[str, float] | None = None
     note: str | None = Field(default=None, max_length=500)
+
+
+class DelegationRequest(BaseModel):
+    operation: str = Field(min_length=1, max_length=100)
+    context_units: int = Field(ge=0)
+    sensitivity: str = Field(min_length=1, max_length=30)
+    risk_level: str = Field(min_length=1, max_length=30)
+    reference_available: bool = False
+    minimum_context_units: int = Field(default=10_000, ge=0)
 
 
 telemetry_store = TelemetryStore(
@@ -391,6 +401,17 @@ def routing_release_history(limit: int = 20):
         "records": routing_release_store.recent(limit=safe_limit),
         "privacy": "Records contain aggregate metrics and release metadata, not workload rows, prompts, or model outputs.",
         "scope": "Demonstration audit trail. Production requires authenticated authors and protected, durable storage.",
+    }
+
+
+@app.post("/delegation-decision")
+def delegation_decision(request: DelegationRequest):
+    """Enforce which bounded operations may use an efficient worker route."""
+    decision = evaluate_delegation_policy(**request.model_dump())
+    return {
+        **decision.to_dict(),
+        "scope": "Deterministic pre-execution guardrail; it does not execute a model or claim provider performance.",
+        "privacy": "The request contains workload metadata only, not prompts, files, or model outputs.",
     }
 
 
