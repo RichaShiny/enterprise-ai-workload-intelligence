@@ -259,6 +259,26 @@ def test_routing_release_report_api_returns_a_matched_simulation_decision(tmp_pa
     assert history.json()["records"][0]["candidate_policy"] == "reliability_first"
 
 
+def test_delegation_decision_api_enforces_low_risk_bulk_context_guardrail():
+    from fastapi.testclient import TestClient
+    from src.api.main import app
+
+    response = TestClient(app).post(
+        "/delegation-decision",
+        json={
+            "operation": "bulk_context",
+            "context_units": 12_000,
+            "sensitivity": "low",
+            "risk_level": "low",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["allowed"] is True
+    assert response.json()["worker_profile"] == "bulk_context_worker"
+    assert "prompts" in response.json()["privacy"]
+
+
 def test_policy_change_gate_api_reports_a_release_decision(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
     from src.api.main import app
