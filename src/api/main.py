@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from src.evaluation.routing_release import evaluate_routing_policy_change
 from src.execution.strategy_selector import StrategySelector
 from src.policy_assistant.audit import PolicyChangeStore
 from src.policy_assistant.change_gate import evaluate_policy_change
@@ -91,6 +92,36 @@ class PolicyDocumentInput(BaseModel):
 class PolicyChangeRequest(BaseModel):
     candidate_policies: list[PolicyDocumentInput] = Field(min_length=1, max_length=100)
     note: str | None = Field(default=None, max_length=500)
+
+
+class CounterfactualOutcomeInput(BaseModel):
+    """One tool-specific outcome for a workload in a release-evaluation table."""
+    event_id: str = Field(min_length=1, max_length=200)
+    tool: str = Field(min_length=1, max_length=100)
+    observed_tool: str = Field(min_length=1, max_length=100)
+    department: str = Field(min_length=1, max_length=100)
+    workflow: str = Field(min_length=1, max_length=100)
+    task_type: str = Field(min_length=1, max_length=100)
+    complexity: str = Field(min_length=1, max_length=30)
+    sensitivity: str = Field(min_length=1, max_length=30)
+    business_priority: int = Field(ge=1, le=5)
+    expected_quality: float = Field(ge=0, le=1)
+    success_probability: float = Field(ge=0, le=1)
+    expected_corrections: float = Field(ge=0)
+    expected_latency_ms: float = Field(ge=0)
+    estimated_cost_usd: float = Field(ge=0)
+    task_success: float = Field(ge=0, le=1)
+    quality_score: float = Field(ge=0, le=1)
+    latency_ms: float = Field(ge=0)
+    human_corrections: float = Field(ge=0)
+
+
+class RoutingReleaseRequest(BaseModel):
+    baseline_policy: str = Field(min_length=1, max_length=100)
+    candidate_policy: str = Field(min_length=1, max_length=100)
+    outcomes: list[CounterfactualOutcomeInput] = Field(min_length=1, max_length=10_000)
+    default_tolerance: float = Field(default=0.02, ge=0)
+    metric_tolerances: dict[str, float] | None = None
 
 
 telemetry_store = TelemetryStore(
@@ -321,6 +352,21 @@ def policy_assistant_change_history(limit: int = 20):
         "privacy": "Records contain metrics and policy metadata, not policy document text or user questions.",
         "scope": "Demonstration audit trail. Production requires authenticated authors and protected, durable storage.",
     }
+
+
+@app.post("/routing-release-report")
+def routing_release_report(request: RoutingReleaseRequest):
+    """Evaluate a proposed router policy on a caller-supplied potential-outcome table."""
+    import pandas as pd
+
+    report = evaluate_routing_policy_change(
+        pd.DataFrame([outcome.model_dump() for outcome in request.outcomes]),
+        baseline_policy=request.baseline_policy,
+        candidate_policy=request.candidate_policy,
+        default_tolerance=request.default_tolerance,
+        metric_tolerances=request.metric_tolerances,
+    )
+    return report.to_dict()
 
 
 @app.post("/policy-assistant")

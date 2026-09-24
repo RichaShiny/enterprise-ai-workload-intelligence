@@ -205,6 +205,46 @@ def test_policy_assistant_evaluation_endpoint_exposes_demo_quality_metrics():
     assert response.json()["safe_abstention_rate"] == 1.0
 
 
+def test_routing_release_report_api_returns_a_matched_simulation_decision():
+    from fastapi.testclient import TestClient
+    from src.api.main import app
+
+    shared = {
+        "department": "engineering", "workflow": "implementation",
+        "task_type": "coding", "complexity": "medium", "sensitivity": "medium",
+        "business_priority": 3,
+    }
+    response = TestClient(app).post(
+        "/routing-release-report",
+        json={
+            "baseline_policy": "balanced",
+            "candidate_policy": "reliability_first",
+            "default_tolerance": 0.001,
+            "outcomes": [
+                {
+                    **shared, "event_id": "release-1", "tool": "small", "observed_tool": "small",
+                    "expected_quality": 0.82, "success_probability": 0.82,
+                    "expected_corrections": 2, "expected_latency_ms": 900,
+                    "estimated_cost_usd": 0.01, "task_success": 0.82,
+                    "quality_score": 0.82, "latency_ms": 900, "human_corrections": 2,
+                },
+                {
+                    **shared, "event_id": "release-1", "tool": "frontier", "observed_tool": "small",
+                    "expected_quality": 0.93, "success_probability": 0.94,
+                    "expected_corrections": 0, "expected_latency_ms": 1300,
+                    "estimated_cost_usd": 0.08, "task_success": 0.94,
+                    "quality_score": 0.93, "latency_ms": 1300, "human_corrections": 0,
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["evaluated_events"] == 1
+    assert response.json()["release_ready"] is False
+    assert "cost_per_event_usd" in response.json()["regressions"]
+
+
 def test_policy_change_gate_api_reports_a_release_decision(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
     from src.api.main import app
