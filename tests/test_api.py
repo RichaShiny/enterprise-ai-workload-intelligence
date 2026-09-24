@@ -205,9 +205,17 @@ def test_policy_assistant_evaluation_endpoint_exposes_demo_quality_metrics():
     assert response.json()["safe_abstention_rate"] == 1.0
 
 
-def test_routing_release_report_api_returns_a_matched_simulation_decision():
+def test_routing_release_report_api_returns_a_matched_simulation_decision(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
     from src.api.main import app
+    from src.evaluation.release_audit import RoutingReleaseStore
+    import src.api.main as api_main
+
+    monkeypatch.setattr(
+        api_main,
+        "routing_release_store",
+        RoutingReleaseStore(str(tmp_path / "routing-releases.jsonl")),
+    )
 
     shared = {
         "department": "engineering", "workflow": "implementation",
@@ -220,6 +228,7 @@ def test_routing_release_report_api_returns_a_matched_simulation_decision():
             "baseline_policy": "balanced",
             "candidate_policy": "reliability_first",
             "default_tolerance": 0.001,
+            "note": "candidate routing policy",
             "outcomes": [
                 {
                     **shared, "event_id": "release-1", "tool": "small", "observed_tool": "small",
@@ -243,6 +252,11 @@ def test_routing_release_report_api_returns_a_matched_simulation_decision():
     assert response.json()["evaluated_events"] == 1
     assert response.json()["release_ready"] is False
     assert "cost_per_event_usd" in response.json()["regressions"]
+    assert response.json()["audit"]["note"] == "candidate routing policy"
+
+    history = TestClient(app).get("/routing-release-history")
+    assert history.status_code == 200
+    assert history.json()["records"][0]["candidate_policy"] == "reliability_first"
 
 
 def test_policy_change_gate_api_reports_a_release_decision(tmp_path, monkeypatch):

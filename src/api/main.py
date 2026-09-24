@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from src.evaluation.release_audit import RoutingReleaseStore
 from src.evaluation.routing_release import evaluate_routing_policy_change
 from src.execution.strategy_selector import StrategySelector
 from src.policy_assistant.audit import PolicyChangeStore
@@ -122,6 +123,7 @@ class RoutingReleaseRequest(BaseModel):
     outcomes: list[CounterfactualOutcomeInput] = Field(min_length=1, max_length=10_000)
     default_tolerance: float = Field(default=0.02, ge=0)
     metric_tolerances: dict[str, float] | None = None
+    note: str | None = Field(default=None, max_length=500)
 
 
 telemetry_store = TelemetryStore(
@@ -142,6 +144,9 @@ policy_assistant = build_policy_assistant()
 policy_summary_provider = PolicySummaryProvider()
 policy_change_store = PolicyChangeStore(
     os.getenv("POLICY_CHANGE_PATH", "data/policy_changes/decisions.jsonl")
+)
+routing_release_store = RoutingReleaseStore(
+    os.getenv("ROUTING_RELEASE_PATH", "data/routing_release_reports/decisions.jsonl")
 )
 STATIC_DIR = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -366,7 +371,27 @@ def routing_release_report(request: RoutingReleaseRequest):
         default_tolerance=request.default_tolerance,
         metric_tolerances=request.metric_tolerances,
     )
-    return report.to_dict()
+    report_data = report.to_dict()
+    audit_record = routing_release_store.record(report_data, note=request.note)
+    return {
+        **report_data,
+        "audit": {
+            "release_id": audit_record["release_id"],
+            "created_at": audit_record["created_at"],
+            "note": audit_record["note"],
+        },
+    }
+
+
+@app.get("/routing-release-history")
+def routing_release_history(limit: int = 20):
+    """Return content-light routing release decisions in newest-first order."""
+    safe_limit = min(max(limit, 1), 100)
+    return {
+        "records": routing_release_store.recent(limit=safe_limit),
+        "privacy": "Records contain aggregate metrics and release metadata, not workload rows, prompts, or model outputs.",
+        "scope": "Demonstration audit trail. Production requires authenticated authors and protected, durable storage.",
+    }
 
 
 @app.post("/policy-assistant")
