@@ -279,6 +279,28 @@ def test_delegation_decision_api_enforces_low_risk_bulk_context_guardrail():
     assert "prompts" in response.json()["privacy"]
 
 
+def test_delegation_insights_exposes_observed_outcomes_by_execution_path(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from src.api.main import app
+    from src.telemetry.store import TelemetryStore
+    import src.api.main as api_main
+
+    store = TelemetryStore(str(tmp_path / "events.jsonl"))
+    store.log(TelemetryEvent(
+        workload_id="delegated-1", task_type="coding", complexity="medium", sensitivity="low",
+        strategy="direct_small", model="worker", latency_ms=100, input_tokens=10, output_tokens=5,
+        total_tokens=15, escalated=False, verification_passed=True, verification_confidence=0.9,
+        estimated_cost_usd=0.001, success=True, delegation_execution_path="efficient_worker",
+    ))
+    monkeypatch.setattr(api_main, "telemetry_store", store)
+
+    response = TestClient(app).get("/delegation-insights")
+
+    assert response.status_code == 200
+    assert response.json()["delegated"]["events"] == 1
+    assert "not causal" in response.json()["scope"]
+
+
 def test_policy_change_gate_api_reports_a_release_decision(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
     from src.api.main import app

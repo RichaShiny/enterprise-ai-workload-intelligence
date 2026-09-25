@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from src.evaluation.release_audit import RoutingReleaseStore
 from src.evaluation.routing_release import evaluate_routing_policy_change
+from src.evaluation.delegation_observability import summarize_delegation_events
 from src.execution.delegation_policy import evaluate_delegation_policy
 from src.execution.strategy_selector import StrategySelector
 from src.policy_assistant.audit import PolicyChangeStore
@@ -66,6 +67,10 @@ class OutcomeRequest(BaseModel):
     recommended_strategy: str | None = None
     routing_source: str | None = None
     shadow_mode: bool = False
+    delegation_operation: str | None = Field(default=None, max_length=100)
+    delegation_execution_path: str | None = Field(default=None, max_length=100)
+    delegation_worker_profile: str | None = Field(default=None, max_length=100)
+    context_units: int | None = Field(default=None, ge=0)
 
 
 class PolicyAssistantRequest(BaseModel):
@@ -525,3 +530,9 @@ def record_outcome(request: OutcomeRequest):
 def insights():
     """Summarize observed decisions and outcomes for an enterprise reviewer."""
     return summarize_events(telemetry_store.load())
+
+
+@app.get("/delegation-insights")
+def delegation_insights():
+    """Describe observed outcomes after policy-enforced delegation decisions."""
+    return summarize_delegation_events(telemetry_store.load())
