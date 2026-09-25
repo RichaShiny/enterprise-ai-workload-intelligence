@@ -31,6 +31,12 @@ class TelemetryEvent:
     routing_source: str | None = None
     shadow_mode: bool = False
 
+    # Optional delegation metadata for evaluating enforced worker handoffs.
+    delegation_operation: str | None = None
+    delegation_execution_path: str | None = None
+    delegation_worker_profile: str | None = None
+    context_units: int | None = None
+
     timestamp: str = ""
 
     def __post_init__(self):
