@@ -37,3 +37,34 @@ def summarize_delegation_events(events: list[dict]) -> dict:
         ),
         "privacy": "Aggregates use operational metadata only; prompts and model outputs are excluded.",
     }
+
+
+def evaluate_delegation_evidence(
+    report: dict,
+    *,
+    minimum_completed_events: int = 20,
+) -> dict:
+    """State whether each execution path has enough observed outcomes for review."""
+    if minimum_completed_events < 1:
+        raise ValueError("minimum_completed_events must be at least 1.")
+
+    paths = {
+        "efficient_worker": report["delegated"],
+        "primary_route": report["retained_on_primary"],
+    }
+    evidence = {
+        path: {
+            "completed_outcomes": summary["completed_outcomes"],
+            "minimum_completed_events": minimum_completed_events,
+            "sufficient": summary["completed_outcomes"] >= minimum_completed_events,
+        }
+        for path, summary in paths.items()
+    }
+    return {
+        "by_execution_path": evidence,
+        "comparison_ready": all(item["sufficient"] for item in evidence.values()),
+        "note": (
+            "This is an evidence-volume gate, not a causal inference test. "
+            "Use matched or randomized evaluation before attributing differences to delegation."
+        ),
+    }
