@@ -62,6 +62,10 @@ def schema_relationships() -> dict:
     }
 
 
+class IdempotencyConflict(ValueError):
+    """An existing request key was reused with different trace data."""
+
+
 class RelationalWorkloadLedger:
     """SQLite-backed ledger with foreign-key enforcement and narrow write methods."""
 
@@ -107,12 +111,32 @@ class RelationalWorkloadLedger:
     def record_trace(self, trace: dict, idempotency_key: str | None = None) -> bool:
         """Persist one complete workload-to-outcome trace in a single transaction."""
         with self._connect() as connection:
+            # Serialize the lookup and insert, including concurrent retries.
+            connection.execute("BEGIN IMMEDIATE")
             if idempotency_key is not None:
                 existing = connection.execute(
                     "SELECT outcome_id FROM trace_requests WHERE idempotency_key = ?",
                     (idempotency_key,),
                 ).fetchone()
                 if existing is not None:
+                    cursor = connection.execute("""
+                        SELECT w.workload_id, w.task_type, w.complexity, w.sensitivity,
+                               w.created_at AS workload_created_at,
+                               d.decision_id, d.policy_name, d.execution_path,
+                               d.routing_source, d.decided_at,
+                               e.execution_id, e.worker_profile, e.model_name, e.started_at,
+                               o.outcome_id, o.success, o.latency_ms,
+                               o.estimated_cost_usd, o.total_tokens,
+                               o.verification_passed, o.recorded_at
+                        FROM outcomes o
+                        JOIN executions e ON e.execution_id = o.execution_id
+                        JOIN route_decisions d ON d.decision_id = e.decision_id
+                        JOIN workloads w ON w.workload_id = d.workload_id
+                        WHERE o.outcome_id = ?
+                    """, (existing[0],))
+                    stored = dict(zip((column[0] for column in cursor.description), cursor.fetchone()))
+                    if any(trace.get(field) != value for field, value in stored.items()):
+                        raise IdempotencyConflict("Idempotency key already belongs to a different trace payload.")
                     return False
             connection.execute(
                 "INSERT INTO workloads VALUES (?, ?, ?, ?, ?)",

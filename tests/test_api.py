@@ -151,6 +151,12 @@ def test_workload_trace_api_persists_and_returns_a_joined_trace(tmp_path, monkey
     assert recorded.status_code == 201
     assert recorded.json()["recorded"] is True
     assert client.post("/workload-ledger/traces", json=payload).json()["recorded"] is False
+    for field, value in {"success": False, "workload_id": "other", "latency_ms": 99, "policy_name": "other-policy"}.items():
+        conflict = client.post("/workload-ledger/traces", json={**payload, field: value})
+        assert conflict.status_code == 409
+    persisted = client.get("/workload-ledger/traces").json()["traces"]
+    assert len(persisted) == 1
+    assert persisted[0]["latency_ms"] == 10
     assert traces.json()["traces"][0]["worker_profile"] == "bulk_context_worker"
     assert traces.json()["filters"] == {"execution_path": "efficient_worker", "success": True}
 

@@ -4,7 +4,7 @@ from pathlib import Path
 from statistics import mean
 from uuid import uuid4
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -18,7 +18,7 @@ from src.evaluation.delegation_observability import (
     summarize_delegation_events,
 )
 from src.execution.delegation_policy import evaluate_delegation_policy
-from src.storage.workload_ledger import RelationalWorkloadLedger, schema_relationships
+from src.storage.workload_ledger import IdempotencyConflict, RelationalWorkloadLedger, schema_relationships
 from src.execution.strategy_selector import StrategySelector
 from src.policy_assistant.audit import PolicyChangeStore
 from src.policy_assistant.change_gate import evaluate_policy_change
@@ -336,7 +336,10 @@ def workload_ledger_schema():
 def record_workload_trace(request: LedgerTraceRequest):
     """Persist a fully linked, content-free execution trace atomically."""
     trace = request.model_dump(exclude={"idempotency_key"})
-    created = workload_ledger.record_trace(trace, request.idempotency_key)
+    try:
+        created = workload_ledger.record_trace(trace, request.idempotency_key)
+    except IdempotencyConflict as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     return {
         "recorded": created,
         "workload_id": request.workload_id,
