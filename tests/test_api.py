@@ -137,6 +137,7 @@ def test_workload_trace_api_persists_and_returns_a_joined_trace(tmp_path, monkey
     monkeypatch.setattr(api_main, "workload_ledger", RelationalWorkloadLedger(str(tmp_path / "ledger.sqlite3")))
     payload = {
         "workload_id": "w-1", "task_type": "coding", "complexity": "medium", "sensitivity": "low", "workload_created_at": "now",
+        "idempotency_key": "trace-w-1",
         "decision_id": "d-1", "policy_name": "guardrail", "execution_path": "efficient_worker", "routing_source": "policy", "decided_at": "now",
         "execution_id": "e-1", "worker_profile": "bulk_context_worker", "model_name": "worker", "started_at": "now",
         "outcome_id": "o-1", "success": True, "latency_ms": 10, "estimated_cost_usd": 0.001,
@@ -149,6 +150,7 @@ def test_workload_trace_api_persists_and_returns_a_joined_trace(tmp_path, monkey
 
     assert recorded.status_code == 201
     assert recorded.json()["recorded"] is True
+    assert client.post("/workload-ledger/traces", json=payload).json()["recorded"] is False
     assert traces.json()["traces"][0]["worker_profile"] == "bulk_context_worker"
     assert traces.json()["filters"] == {"execution_path": "efficient_worker", "success": True}
 

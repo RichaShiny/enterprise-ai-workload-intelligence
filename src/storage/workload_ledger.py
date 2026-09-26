@@ -42,6 +42,11 @@ CREATE TABLE IF NOT EXISTS outcomes (
     verification_passed INTEGER,
     recorded_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS trace_requests (
+    idempotency_key TEXT PRIMARY KEY,
+    outcome_id TEXT NOT NULL REFERENCES outcomes(outcome_id)
+);
 """
 
 
@@ -99,9 +104,16 @@ class RelationalWorkloadLedger:
                 (outcome_id, execution_id, success, latency_ms, estimated_cost_usd, total_tokens, verification_passed, recorded_at),
             )
 
-    def record_trace(self, trace: dict) -> None:
+    def record_trace(self, trace: dict, idempotency_key: str | None = None) -> bool:
         """Persist one complete workload-to-outcome trace in a single transaction."""
         with self._connect() as connection:
+            if idempotency_key is not None:
+                existing = connection.execute(
+                    "SELECT outcome_id FROM trace_requests WHERE idempotency_key = ?",
+                    (idempotency_key,),
+                ).fetchone()
+                if existing is not None:
+                    return False
             connection.execute(
                 "INSERT INTO workloads VALUES (?, ?, ?, ?, ?)",
                 (trace["workload_id"], trace["task_type"], trace["complexity"], trace["sensitivity"], trace["workload_created_at"]),
@@ -118,6 +130,12 @@ class RelationalWorkloadLedger:
                 "INSERT INTO outcomes VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (trace["outcome_id"], trace["execution_id"], trace.get("success"), trace["latency_ms"], trace.get("estimated_cost_usd"), trace.get("total_tokens"), trace.get("verification_passed"), trace["recorded_at"]),
             )
+            if idempotency_key is not None:
+                connection.execute(
+                    "INSERT INTO trace_requests VALUES (?, ?)",
+                    (idempotency_key, trace["outcome_id"]),
+                )
+        return True
 
     def trace_rows(
         self,

@@ -148,6 +148,7 @@ class DelegationRequest(BaseModel):
 
 
 class LedgerTraceRequest(BaseModel):
+    idempotency_key: str | None = Field(default=None, min_length=1, max_length=200)
     workload_id: str = Field(min_length=1, max_length=200)
     task_type: str = Field(min_length=1, max_length=100)
     complexity: str = Field(min_length=1, max_length=30)
@@ -334,9 +335,10 @@ def workload_ledger_schema():
 @app.post("/workload-ledger/traces", status_code=201)
 def record_workload_trace(request: LedgerTraceRequest):
     """Persist a fully linked, content-free execution trace atomically."""
-    workload_ledger.record_trace(request.model_dump())
+    trace = request.model_dump(exclude={"idempotency_key"})
+    created = workload_ledger.record_trace(trace, request.idempotency_key)
     return {
-        "recorded": True,
+        "recorded": created,
         "workload_id": request.workload_id,
         "decision_id": request.decision_id,
         "execution_id": request.execution_id,
