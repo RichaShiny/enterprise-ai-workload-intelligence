@@ -8,6 +8,7 @@ not evidence of live vendor or production performance.
 from dataclasses import asdict, dataclass
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from src.evaluation.regression import RegressionEvaluator
@@ -35,6 +36,7 @@ class RoutingReleaseReport:
     baseline: dict[str, float]
     candidate: dict[str, float]
     deltas: dict[str, float]
+    confidence_intervals: dict[str, dict[str, float]]
     regressions: list[str]
     improvements: list[str]
     unchanged: list[str]
@@ -93,6 +95,44 @@ def summarize_policy_decisions(decisions: pd.DataFrame) -> dict[str, float]:
     }
 
 
+def paired_bootstrap_intervals(
+    baseline_decisions: pd.DataFrame,
+    candidate_decisions: pd.DataFrame,
+    *,
+    samples: int = 1_000,
+    random_seed: int = 0,
+    confidence_level: float = 0.95,
+) -> dict[str, dict[str, float]]:
+    """Estimate uncertainty of paired policy deltas by resampling event IDs."""
+    if samples < 1:
+        raise ValueError("samples must be at least 1.")
+    if not 0 < confidence_level < 1:
+        raise ValueError("confidence_level must be between 0 and 1.")
+    baseline = baseline_decisions.sort_values("event_id").reset_index(drop=True)
+    candidate = candidate_decisions.sort_values("event_id").reset_index(drop=True)
+    if baseline["event_id"].tolist() != candidate["event_id"].tolist():
+        raise ValueError("Bootstrap intervals require aligned event IDs.")
+
+    series = {
+        "cost_per_event_usd": (baseline["estimated_cost_usd"].to_numpy(), candidate["estimated_cost_usd"].to_numpy()),
+        "success_rate": (baseline["task_success"].to_numpy(), candidate["task_success"].to_numpy()),
+        "quality_score": (baseline["quality_score"].to_numpy(), candidate["quality_score"].to_numpy()),
+        "latency_ms": (baseline["latency_ms"].to_numpy(), candidate["latency_ms"].to_numpy()),
+        "corrections_per_event": (baseline["human_corrections"].to_numpy(), candidate["human_corrections"].to_numpy()),
+        "constraints_satisfied_rate": ((baseline["decision_status"] == "constraints_satisfied").to_numpy(dtype=float), (candidate["decision_status"] == "constraints_satisfied").to_numpy(dtype=float)),
+        "fallback_rate": ((baseline["decision_status"] == "fallback_best_available").to_numpy(dtype=float), (candidate["decision_status"] == "fallback_best_available").to_numpy(dtype=float)),
+    }
+    indices = np.random.default_rng(random_seed).integers(0, len(baseline), size=(samples, len(baseline)))
+    alpha = (1 - confidence_level) / 2
+    return {
+        metric: {
+            "lower": float(np.quantile(candidate_values[indices].mean(axis=1) - baseline_values[indices].mean(axis=1), alpha)),
+            "upper": float(np.quantile(candidate_values[indices].mean(axis=1) - baseline_values[indices].mean(axis=1), 1 - alpha)),
+        }
+        for metric, (baseline_values, candidate_values) in series.items()
+    }
+
+
 def evaluate_routing_policy_change(
     outcomes: pd.DataFrame,
     baseline_policy: str,
@@ -100,6 +140,7 @@ def evaluate_routing_policy_change(
     *,
     default_tolerance: float = 0.02,
     metric_tolerances: dict[str, float] | None = None,
+    bootstrap_samples: int = 1_000,
 ) -> RoutingReleaseReport:
     """Compare a candidate policy with a baseline on identical event IDs.
 
@@ -130,6 +171,11 @@ def evaluate_routing_policy_change(
         default_tolerance=default_tolerance,
         metric_tolerances=metric_tolerances,
     ).compare(baseline, candidate, higher_is_better)
+    confidence_intervals = paired_bootstrap_intervals(
+        baseline_decisions,
+        candidate_decisions,
+        samples=bootstrap_samples,
+    )
     return RoutingReleaseReport(
         baseline_policy=baseline_policy,
         candidate_policy=candidate_policy,
@@ -137,6 +183,7 @@ def evaluate_routing_policy_change(
         baseline=baseline,
         candidate=candidate,
         deltas={metric: candidate[metric] - baseline[metric] for metric in baseline},
+        confidence_intervals=confidence_intervals,
         regressions=comparison.regressions,
         improvements=comparison.improvements,
         unchanged=comparison.unchanged,
