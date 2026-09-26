@@ -134,3 +134,24 @@ class RelationalWorkloadLedger:
                 ORDER BY d.decided_at, e.started_at
             """).fetchall()
         return [dict(row) for row in rows]
+
+    def execution_path_summary(self) -> list[dict]:
+        """Return a compact relational aggregate grouped by chosen execution path."""
+        with self._connect() as connection:
+            connection.row_factory = sqlite3.Row
+            rows = connection.execute("""
+                SELECT d.execution_path,
+                       COUNT(DISTINCT w.workload_id) AS workloads,
+                       COUNT(o.outcome_id) AS outcomes_recorded,
+                       AVG(o.success) AS success_rate,
+                       AVG(o.latency_ms) AS average_latency_ms,
+                       SUM(o.estimated_cost_usd) AS total_cost_usd,
+                       AVG(o.total_tokens) AS average_total_tokens
+                FROM route_decisions d
+                JOIN workloads w ON w.workload_id = d.workload_id
+                JOIN executions e ON e.decision_id = d.decision_id
+                LEFT JOIN outcomes o ON o.execution_id = e.execution_id
+                GROUP BY d.execution_path
+                ORDER BY d.execution_path
+            """).fetchall()
+        return [dict(row) for row in rows]

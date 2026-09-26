@@ -151,6 +151,11 @@ def test_workload_trace_api_persists_and_returns_a_joined_trace(tmp_path, monkey
     assert recorded.json()["recorded"] is True
     assert traces.json()["traces"][0]["worker_profile"] == "bulk_context_worker"
 
+    summary = client.get("/workload-ledger/execution-summary")
+    assert summary.status_code == 200
+    assert summary.json()["rows"][0]["execution_path"] == "efficient_worker"
+    assert "not a causal" in summary.json()["scope"]
+
 
 def test_policy_assistant_api_returns_grounded_evidence():
     from fastapi.testclient import TestClient
