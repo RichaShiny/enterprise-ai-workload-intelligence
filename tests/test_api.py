@@ -145,11 +145,12 @@ def test_workload_trace_api_persists_and_returns_a_joined_trace(tmp_path, monkey
     client = TestClient(app)
 
     recorded = client.post("/workload-ledger/traces", json=payload)
-    traces = client.get("/workload-ledger/traces")
+    traces = client.get("/workload-ledger/traces?execution_path=efficient_worker&success=true")
 
     assert recorded.status_code == 201
     assert recorded.json()["recorded"] is True
     assert traces.json()["traces"][0]["worker_profile"] == "bulk_context_worker"
+    assert traces.json()["filters"] == {"execution_path": "efficient_worker", "success": True}
 
     summary = client.get("/workload-ledger/execution-summary")
     assert summary.status_code == 200
