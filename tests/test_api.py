@@ -294,11 +294,12 @@ def test_delegation_insights_exposes_observed_outcomes_by_execution_path(tmp_pat
     ))
     monkeypatch.setattr(api_main, "telemetry_store", store)
 
-    response = TestClient(app).get("/delegation-insights")
+    response = TestClient(app).get("/delegation-insights?minimum_completed_events=1")
 
     assert response.status_code == 200
     assert response.json()["delegated"]["events"] == 1
     assert "not causal" in response.json()["scope"]
+    assert response.json()["evidence"]["comparison_ready"] is False
 
 
 def test_policy_change_gate_api_reports_a_release_decision(tmp_path, monkeypatch):

@@ -11,7 +11,10 @@ from pydantic import BaseModel, Field
 
 from src.evaluation.release_audit import RoutingReleaseStore
 from src.evaluation.routing_release import evaluate_routing_policy_change
-from src.evaluation.delegation_observability import summarize_delegation_events
+from src.evaluation.delegation_observability import (
+    evaluate_delegation_evidence,
+    summarize_delegation_events,
+)
 from src.execution.delegation_policy import evaluate_delegation_policy
 from src.execution.strategy_selector import StrategySelector
 from src.policy_assistant.audit import PolicyChangeStore
@@ -533,6 +536,13 @@ def insights():
 
 
 @app.get("/delegation-insights")
-def delegation_insights():
+def delegation_insights(minimum_completed_events: int = 20):
     """Describe observed outcomes after policy-enforced delegation decisions."""
-    return summarize_delegation_events(telemetry_store.load())
+    report = summarize_delegation_events(telemetry_store.load())
+    return {
+        **report,
+        "evidence": evaluate_delegation_evidence(
+            report,
+            minimum_completed_events=minimum_completed_events,
+        ),
+    }
