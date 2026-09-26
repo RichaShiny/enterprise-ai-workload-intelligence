@@ -1,4 +1,5 @@
 from src.evaluation.delegation_observability import (
+    evaluate_delegation_cohort_balance,
     evaluate_delegation_evidence,
     summarize_delegation_events,
 )
@@ -33,3 +34,16 @@ def test_evidence_gate_requires_completed_outcomes_on_both_paths():
     assert evidence["by_execution_path"]["efficient_worker"]["sufficient"] is True
     assert evidence["by_execution_path"]["primary_route"]["sufficient"] is False
     assert evidence["comparison_ready"] is False
+
+
+def test_cohort_balance_flags_different_operation_mix():
+    events = [
+        {"delegation_execution_path": "efficient_worker", "delegation_operation": "bulk_context", "task_type": "coding", "sensitivity": "low"},
+        {"delegation_execution_path": "primary_route", "delegation_operation": "debugging", "task_type": "coding", "sensitivity": "low"},
+    ]
+
+    balance = evaluate_delegation_cohort_balance(events, maximum_share_gap=0.20)
+
+    assert balance["comparable"] is False
+    assert balance["dimensions"]["delegation_operation"]["maximum_observed_gap"] == 1.0
+    assert "do not attribute" in balance["reason"]
