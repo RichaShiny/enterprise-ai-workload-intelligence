@@ -351,6 +351,16 @@ def workload_traces():
     return {"traces": workload_ledger.trace_rows()}
 
 
+@app.get("/workload-ledger/execution-summary")
+def workload_execution_summary():
+    """Return a table-like aggregate of relational execution outcomes by path."""
+    return {
+        "rows": workload_ledger.execution_path_summary(),
+        "scope": "Descriptive aggregate from recorded relational traces; this is not a causal comparison.",
+        "privacy": "Rows include operational outcome metrics only, not prompts or model outputs.",
+    }
+
+
 @app.post("/route")
 def route_workload(request: RouteRequest):
     recommendation = select_recommendation(request)

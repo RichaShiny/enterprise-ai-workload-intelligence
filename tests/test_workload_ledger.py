@@ -46,3 +46,8 @@ def test_record_trace_writes_a_full_linked_chain(tmp_path):
     ledger.record_trace(trace)
 
     assert len(ledger.trace_rows()) == 1
+    assert ledger.execution_path_summary() == [{
+        "execution_path": "primary_route", "workloads": 1, "outcomes_recorded": 1,
+        "success_rate": 1.0, "average_latency_ms": 1.0,
+        "total_cost_usd": 0.01, "average_total_tokens": 5.0,
+    }]
