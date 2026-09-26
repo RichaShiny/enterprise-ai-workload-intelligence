@@ -32,3 +32,17 @@ def test_schema_relationships_describe_the_trace_graph():
 
     assert graph["tables"] == ["workloads", "route_decisions", "executions", "outcomes"]
     assert graph["relationships"][0]["from"] == "route_decisions.workload_id"
+
+
+def test_record_trace_writes_a_full_linked_chain(tmp_path):
+    ledger = RelationalWorkloadLedger(str(tmp_path / "ledger.sqlite3"))
+    trace = {
+        "workload_id": "workload-1", "task_type": "coding", "complexity": "medium", "sensitivity": "low", "workload_created_at": "now",
+        "decision_id": "decision-1", "policy_name": "policy", "execution_path": "primary_route", "routing_source": "guardrail", "decided_at": "now",
+        "execution_id": "execution-1", "worker_profile": None, "model_name": "primary", "started_at": "now",
+        "outcome_id": "outcome-1", "success": True, "latency_ms": 1.0, "estimated_cost_usd": 0.01, "total_tokens": 5,
+        "verification_passed": True, "recorded_at": "now",
+    }
+    ledger.record_trace(trace)
+
+    assert len(ledger.trace_rows()) == 1

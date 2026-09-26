@@ -99,6 +99,26 @@ class RelationalWorkloadLedger:
                 (outcome_id, execution_id, success, latency_ms, estimated_cost_usd, total_tokens, verification_passed, recorded_at),
             )
 
+    def record_trace(self, trace: dict) -> None:
+        """Persist one complete workload-to-outcome trace in a single transaction."""
+        with self._connect() as connection:
+            connection.execute(
+                "INSERT INTO workloads VALUES (?, ?, ?, ?, ?)",
+                (trace["workload_id"], trace["task_type"], trace["complexity"], trace["sensitivity"], trace["workload_created_at"]),
+            )
+            connection.execute(
+                "INSERT INTO route_decisions VALUES (?, ?, ?, ?, ?, ?)",
+                (trace["decision_id"], trace["workload_id"], trace["policy_name"], trace["execution_path"], trace["routing_source"], trace["decided_at"]),
+            )
+            connection.execute(
+                "INSERT INTO executions VALUES (?, ?, ?, ?, ?)",
+                (trace["execution_id"], trace["decision_id"], trace.get("worker_profile"), trace["model_name"], trace["started_at"]),
+            )
+            connection.execute(
+                "INSERT INTO outcomes VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (trace["outcome_id"], trace["execution_id"], trace.get("success"), trace["latency_ms"], trace.get("estimated_cost_usd"), trace.get("total_tokens"), trace.get("verification_passed"), trace["recorded_at"]),
+            )
+
     def trace_rows(self) -> list[dict]:
         """Return a joined, content-free execution trace for review or evaluation."""
         with self._connect() as connection:

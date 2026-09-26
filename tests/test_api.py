@@ -128,6 +128,30 @@ def test_workload_ledger_schema_exposes_relational_traceability():
     assert "prompts" in response.json()["privacy"]
 
 
+def test_workload_trace_api_persists_and_returns_a_joined_trace(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from src.api.main import app
+    from src.storage.workload_ledger import RelationalWorkloadLedger
+    import src.api.main as api_main
+
+    monkeypatch.setattr(api_main, "workload_ledger", RelationalWorkloadLedger(str(tmp_path / "ledger.sqlite3")))
+    payload = {
+        "workload_id": "w-1", "task_type": "coding", "complexity": "medium", "sensitivity": "low", "workload_created_at": "now",
+        "decision_id": "d-1", "policy_name": "guardrail", "execution_path": "efficient_worker", "routing_source": "policy", "decided_at": "now",
+        "execution_id": "e-1", "worker_profile": "bulk_context_worker", "model_name": "worker", "started_at": "now",
+        "outcome_id": "o-1", "success": True, "latency_ms": 10, "estimated_cost_usd": 0.001,
+        "total_tokens": 20, "verification_passed": True, "recorded_at": "now",
+    }
+    client = TestClient(app)
+
+    recorded = client.post("/workload-ledger/traces", json=payload)
+    traces = client.get("/workload-ledger/traces")
+
+    assert recorded.status_code == 201
+    assert recorded.json()["recorded"] is True
+    assert traces.json()["traces"][0]["worker_profile"] == "bulk_context_worker"
+
+
 def test_policy_assistant_api_returns_grounded_evidence():
     from fastapi.testclient import TestClient
     from src.api.main import app

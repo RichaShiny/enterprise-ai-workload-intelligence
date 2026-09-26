@@ -18,7 +18,7 @@ from src.evaluation.delegation_observability import (
     summarize_delegation_events,
 )
 from src.execution.delegation_policy import evaluate_delegation_policy
-from src.storage.workload_ledger import schema_relationships
+from src.storage.workload_ledger import RelationalWorkloadLedger, schema_relationships
 from src.execution.strategy_selector import StrategySelector
 from src.policy_assistant.audit import PolicyChangeStore
 from src.policy_assistant.change_gate import evaluate_policy_change
@@ -147,6 +147,30 @@ class DelegationRequest(BaseModel):
     minimum_context_units: int = Field(default=10_000, ge=0)
 
 
+class LedgerTraceRequest(BaseModel):
+    workload_id: str = Field(min_length=1, max_length=200)
+    task_type: str = Field(min_length=1, max_length=100)
+    complexity: str = Field(min_length=1, max_length=30)
+    sensitivity: str = Field(min_length=1, max_length=30)
+    workload_created_at: str = Field(min_length=1, max_length=64)
+    decision_id: str = Field(min_length=1, max_length=200)
+    policy_name: str = Field(min_length=1, max_length=100)
+    execution_path: str = Field(min_length=1, max_length=100)
+    routing_source: str = Field(min_length=1, max_length=100)
+    decided_at: str = Field(min_length=1, max_length=64)
+    execution_id: str = Field(min_length=1, max_length=200)
+    worker_profile: str | None = Field(default=None, max_length=100)
+    model_name: str = Field(min_length=1, max_length=100)
+    started_at: str = Field(min_length=1, max_length=64)
+    outcome_id: str = Field(min_length=1, max_length=200)
+    success: bool | None = None
+    latency_ms: float = Field(ge=0)
+    estimated_cost_usd: float | None = Field(default=None, ge=0)
+    total_tokens: int | None = Field(default=None, ge=0)
+    verification_passed: bool | None = None
+    recorded_at: str = Field(min_length=1, max_length=64)
+
+
 telemetry_store = TelemetryStore(
     os.getenv("TELEMETRY_PATH", "data/telemetry/events.jsonl")
 )
@@ -168,6 +192,9 @@ policy_change_store = PolicyChangeStore(
 )
 routing_release_store = RoutingReleaseStore(
     os.getenv("ROUTING_RELEASE_PATH", "data/routing_release_reports/decisions.jsonl")
+)
+workload_ledger = RelationalWorkloadLedger(
+    os.getenv("WORKLOAD_LEDGER_PATH", "data/workload_ledger.sqlite3")
 )
 STATIC_DIR = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -302,6 +329,26 @@ def workload_ledger_schema():
         **schema_relationships(),
         "privacy": "The schema links operational metadata only; prompts and model outputs are intentionally excluded.",
     }
+
+
+@app.post("/workload-ledger/traces", status_code=201)
+def record_workload_trace(request: LedgerTraceRequest):
+    """Persist a fully linked, content-free execution trace atomically."""
+    workload_ledger.record_trace(request.model_dump())
+    return {
+        "recorded": True,
+        "workload_id": request.workload_id,
+        "decision_id": request.decision_id,
+        "execution_id": request.execution_id,
+        "outcome_id": request.outcome_id,
+        "privacy": "Trace rows contain operational metadata and metrics only; prompts and model outputs are excluded.",
+    }
+
+
+@app.get("/workload-ledger/traces")
+def workload_traces():
+    """Return joined, content-free workload execution traces."""
+    return {"traces": workload_ledger.trace_rows()}
 
 
 @app.post("/route")
