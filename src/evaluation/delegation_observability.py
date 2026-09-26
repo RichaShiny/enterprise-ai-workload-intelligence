@@ -68,3 +68,61 @@ def evaluate_delegation_evidence(
             "Use matched or randomized evaluation before attributing differences to delegation."
         ),
     }
+
+
+def evaluate_delegation_cohort_balance(
+    events: list[dict],
+    *,
+    maximum_share_gap: float = 0.20,
+) -> dict:
+    """Check whether primary and worker telemetry cover comparable workload cohorts."""
+    if not 0 <= maximum_share_gap <= 1:
+        raise ValueError("maximum_share_gap must be between 0 and 1.")
+
+    delegated = [event for event in events if event.get("delegation_execution_path") == "efficient_worker"]
+    retained = [event for event in events if event.get("delegation_execution_path") == "primary_route"]
+    if not delegated or not retained:
+        return {
+            "comparable": False,
+            "maximum_share_gap": maximum_share_gap,
+            "reason": "Both execution paths need observed events before cohort balance can be assessed.",
+            "dimensions": {},
+        }
+
+    dimensions = {}
+    for field in ("delegation_operation", "task_type", "sensitivity"):
+        delegated_counts = {}
+        retained_counts = {}
+        for event in delegated:
+            value = event.get(field, "unspecified") or "unspecified"
+            delegated_counts[value] = delegated_counts.get(value, 0) + 1
+        for event in retained:
+            value = event.get(field, "unspecified") or "unspecified"
+            retained_counts[value] = retained_counts.get(value, 0) + 1
+        categories = sorted(set(delegated_counts) | set(retained_counts))
+        gaps = {
+            category: round(
+                abs(delegated_counts.get(category, 0) / len(delegated) - retained_counts.get(category, 0) / len(retained)),
+                4,
+            )
+            for category in categories
+        }
+        dimensions[field] = {
+            "maximum_observed_gap": max(gaps.values(), default=0.0),
+            "category_share_gaps": gaps,
+        }
+
+    comparable = all(
+        detail["maximum_observed_gap"] <= maximum_share_gap
+        for detail in dimensions.values()
+    )
+    return {
+        "comparable": comparable,
+        "maximum_share_gap": maximum_share_gap,
+        "dimensions": dimensions,
+        "reason": (
+            "Cohorts are balanced within the configured share-gap threshold."
+            if comparable
+            else "Cohort composition differs across execution paths; do not attribute outcome differences to delegation."
+        ),
+    }
