@@ -1,6 +1,7 @@
 """Aggregate observed results for policy-enforced worker delegation."""
 
 from statistics import mean
+from math import sqrt
 
 
 def _summary(events: list[dict]) -> dict:
@@ -11,11 +12,25 @@ def _summary(events: list[dict]) -> dict:
     return {
         "events": len(events),
         "completed_outcomes": len(completed),
+        "successful_outcomes": sum(event["success"] for event in completed),
         "success_rate": (sum(event["success"] for event in completed) / len(completed) if completed else None),
         "average_latency_ms": round(mean(latencies), 2) if latencies else None,
         "estimated_cost_usd": round(sum(costs), 6),
         "average_total_tokens": round(mean(tokens), 2) if tokens else None,
     }
+
+
+def wilson_lower_bound(successes: int, trials: int, z_score: float = 1.96) -> float | None:
+    """Return a conservative two-sided 95% Wilson lower bound for a success rate."""
+    if trials == 0:
+        return None
+    if successes < 0 or successes > trials:
+        raise ValueError("successes must be between 0 and trials.")
+    proportion = successes / trials
+    denominator = 1 + z_score**2 / trials
+    centre = proportion + z_score**2 / (2 * trials)
+    margin = z_score * sqrt((proportion * (1 - proportion) + z_score**2 / (4 * trials)) / trials)
+    return (centre - margin) / denominator
 
 
 def summarize_delegation_events(events: list[dict]) -> dict:
@@ -150,13 +165,19 @@ def recommend_delegation_rollout(
             "recommended_action": "Do not compare or expand routes until workload cohorts are better matched.",
             "reason": cohort_balance["reason"],
         }
-    worker_success_rate = report["delegated"]["success_rate"]
-    if worker_success_rate is None or worker_success_rate < minimum_worker_success_rate:
+    worker = report["delegated"]
+    worker_success_rate = worker["success_rate"]
+    worker_success_lower_bound = wilson_lower_bound(
+        worker["successful_outcomes"],
+        worker["completed_outcomes"],
+    )
+    if worker_success_lower_bound is None or worker_success_lower_bound < minimum_worker_success_rate:
         return {
             "status": "hold_success_below_floor",
             "recommended_action": "Keep the efficient-worker route scoped to its current allowlist and investigate failed outcomes.",
-            "reason": "The worker path does not meet the configured observed-success floor.",
+            "reason": "The worker path's conservative Wilson lower bound does not meet the configured success floor.",
             "worker_success_rate": worker_success_rate,
+            "worker_success_lower_bound": worker_success_lower_bound,
             "minimum_worker_success_rate": minimum_worker_success_rate,
         }
     return {
@@ -164,5 +185,6 @@ def recommend_delegation_rollout(
         "recommended_action": "Review outcome quality and failure cases before expanding the delegation allowlist.",
         "reason": "Evidence volume, cohort balance, and the worker success floor passed; this is not automatic promotion.",
         "worker_success_rate": worker_success_rate,
+        "worker_success_lower_bound": worker_success_lower_bound,
         "minimum_worker_success_rate": minimum_worker_success_rate,
     }
