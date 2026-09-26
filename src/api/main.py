@@ -14,6 +14,7 @@ from src.evaluation.routing_release import evaluate_routing_policy_change
 from src.evaluation.delegation_observability import (
     evaluate_delegation_cohort_balance,
     evaluate_delegation_evidence,
+    recommend_delegation_rollout,
     summarize_delegation_events,
 )
 from src.execution.delegation_policy import evaluate_delegation_policy
@@ -540,18 +541,27 @@ def insights():
 def delegation_insights(
     minimum_completed_events: int = 20,
     maximum_share_gap: float = 0.20,
+    minimum_worker_success_rate: float = 0.80,
 ):
     """Describe observed outcomes after policy-enforced delegation decisions."""
     events = telemetry_store.load()
     report = summarize_delegation_events(events)
+    evidence = evaluate_delegation_evidence(
+        report,
+        minimum_completed_events=minimum_completed_events,
+    )
+    cohort_balance = evaluate_delegation_cohort_balance(
+        events,
+        maximum_share_gap=maximum_share_gap,
+    )
     return {
         **report,
-        "evidence": evaluate_delegation_evidence(
+        "evidence": evidence,
+        "cohort_balance": cohort_balance,
+        "rollout_recommendation": recommend_delegation_rollout(
             report,
-            minimum_completed_events=minimum_completed_events,
-        ),
-        "cohort_balance": evaluate_delegation_cohort_balance(
-            events,
-            maximum_share_gap=maximum_share_gap,
+            evidence,
+            cohort_balance,
+            minimum_worker_success_rate=minimum_worker_success_rate,
         ),
     }

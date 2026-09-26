@@ -1,6 +1,7 @@
 from src.evaluation.delegation_observability import (
     evaluate_delegation_cohort_balance,
     evaluate_delegation_evidence,
+    recommend_delegation_rollout,
     summarize_delegation_events,
 )
 
@@ -47,3 +48,28 @@ def test_cohort_balance_flags_different_operation_mix():
     assert balance["comparable"] is False
     assert balance["dimensions"]["delegation_operation"]["maximum_observed_gap"] == 1.0
     assert "do not attribute" in balance["reason"]
+
+
+def test_rollout_recommendation_never_promotes_without_evidence():
+    report = summarize_delegation_events([])
+    evidence = evaluate_delegation_evidence(report, minimum_completed_events=1)
+    cohort_balance = evaluate_delegation_cohort_balance([])
+
+    recommendation = recommend_delegation_rollout(report, evidence, cohort_balance)
+
+    assert recommendation["status"] == "hold_insufficient_evidence"
+
+
+def test_rollout_recommendation_requires_human_review_after_gates_pass():
+    events = [
+        {"delegation_execution_path": "efficient_worker", "delegation_operation": "bulk_context", "task_type": "coding", "sensitivity": "low", "success": True},
+        {"delegation_execution_path": "primary_route", "delegation_operation": "bulk_context", "task_type": "coding", "sensitivity": "low", "success": True},
+    ]
+    report = summarize_delegation_events(events)
+    evidence = evaluate_delegation_evidence(report, minimum_completed_events=1)
+    cohort_balance = evaluate_delegation_cohort_balance(events)
+
+    recommendation = recommend_delegation_rollout(report, evidence, cohort_balance)
+
+    assert recommendation["status"] == "eligible_for_human_review"
+    assert "not automatic" in recommendation["reason"]
