@@ -119,8 +119,22 @@ class RelationalWorkloadLedger:
                 (trace["outcome_id"], trace["execution_id"], trace.get("success"), trace["latency_ms"], trace.get("estimated_cost_usd"), trace.get("total_tokens"), trace.get("verification_passed"), trace["recorded_at"]),
             )
 
-    def trace_rows(self) -> list[dict]:
-        """Return a joined, content-free execution trace for review or evaluation."""
+    def trace_rows(
+        self,
+        *,
+        execution_path: str | None = None,
+        success: bool | None = None,
+    ) -> list[dict]:
+        """Return joined, content-free execution traces with optional audit filters."""
+        conditions = []
+        parameters = []
+        if execution_path is not None:
+            conditions.append("d.execution_path = ?")
+            parameters.append(execution_path)
+        if success is not None:
+            conditions.append("o.success = ?")
+            parameters.append(success)
+        where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
         with self._connect() as connection:
             connection.row_factory = sqlite3.Row
             rows = connection.execute("""
@@ -131,8 +145,7 @@ class RelationalWorkloadLedger:
                 JOIN route_decisions d ON d.workload_id = w.workload_id
                 JOIN executions e ON e.decision_id = d.decision_id
                 LEFT JOIN outcomes o ON o.execution_id = e.execution_id
-                ORDER BY d.decided_at, e.started_at
-            """).fetchall()
+            """ + where_clause + " ORDER BY d.decided_at, e.started_at", parameters).fetchall()
         return [dict(row) for row in rows]
 
     def execution_path_summary(self) -> list[dict]:

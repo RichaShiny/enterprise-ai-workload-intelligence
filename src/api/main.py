@@ -346,9 +346,21 @@ def record_workload_trace(request: LedgerTraceRequest):
 
 
 @app.get("/workload-ledger/traces")
-def workload_traces():
+def workload_traces(
+    execution_path: str | None = None,
+    success: bool | None = None,
+):
     """Return joined, content-free workload execution traces."""
-    return {"traces": workload_ledger.trace_rows()}
+    return {
+        "traces": workload_ledger.trace_rows(
+            execution_path=execution_path,
+            success=success,
+        ),
+        "filters": {
+            "execution_path": execution_path,
+            "success": success,
+        },
+    }
 
 
 @app.get("/workload-ledger/execution-summary")

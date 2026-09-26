@@ -18,6 +18,8 @@ def test_relational_ledger_preserves_workload_to_outcome_trace(tmp_path):
         "worker_profile": "bulk_context_worker", "outcome_id": "outcome-1",
         "success": 1, "latency_ms": 120.0, "estimated_cost_usd": 0.002,
     }]
+    assert ledger.trace_rows(execution_path="efficient_worker", success=True)[0]["outcome_id"] == "outcome-1"
+    assert ledger.trace_rows(execution_path="primary_route") == []
 
 
 def test_relational_ledger_rejects_orphaned_decisions(tmp_path):
