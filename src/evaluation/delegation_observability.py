@@ -126,3 +126,43 @@ def evaluate_delegation_cohort_balance(
             else "Cohort composition differs across execution paths; do not attribute outcome differences to delegation."
         ),
     }
+
+
+def recommend_delegation_rollout(
+    report: dict,
+    evidence: dict,
+    cohort_balance: dict,
+    *,
+    minimum_worker_success_rate: float = 0.80,
+) -> dict:
+    """Return a conservative, human-review recommendation for delegation rollout."""
+    if not 0 <= minimum_worker_success_rate <= 1:
+        raise ValueError("minimum_worker_success_rate must be between 0 and 1.")
+    if not evidence["comparison_ready"]:
+        return {
+            "status": "hold_insufficient_evidence",
+            "recommended_action": "Keep the current delegation policy unchanged and collect completed outcomes on both paths.",
+            "reason": "The evidence-volume gate has not passed.",
+        }
+    if not cohort_balance["comparable"]:
+        return {
+            "status": "hold_unbalanced_cohorts",
+            "recommended_action": "Do not compare or expand routes until workload cohorts are better matched.",
+            "reason": cohort_balance["reason"],
+        }
+    worker_success_rate = report["delegated"]["success_rate"]
+    if worker_success_rate is None or worker_success_rate < minimum_worker_success_rate:
+        return {
+            "status": "hold_success_below_floor",
+            "recommended_action": "Keep the efficient-worker route scoped to its current allowlist and investigate failed outcomes.",
+            "reason": "The worker path does not meet the configured observed-success floor.",
+            "worker_success_rate": worker_success_rate,
+            "minimum_worker_success_rate": minimum_worker_success_rate,
+        }
+    return {
+        "status": "eligible_for_human_review",
+        "recommended_action": "Review outcome quality and failure cases before expanding the delegation allowlist.",
+        "reason": "Evidence volume, cohort balance, and the worker success floor passed; this is not automatic promotion.",
+        "worker_success_rate": worker_success_rate,
+        "minimum_worker_success_rate": minimum_worker_success_rate,
+    }

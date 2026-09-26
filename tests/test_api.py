@@ -301,6 +301,7 @@ def test_delegation_insights_exposes_observed_outcomes_by_execution_path(tmp_pat
     assert "not causal" in response.json()["scope"]
     assert response.json()["evidence"]["comparison_ready"] is False
     assert response.json()["cohort_balance"]["comparable"] is False
+    assert response.json()["rollout_recommendation"]["status"] == "hold_insufficient_evidence"
 
 
 def test_policy_change_gate_api_reports_a_release_decision(tmp_path, monkeypatch):
