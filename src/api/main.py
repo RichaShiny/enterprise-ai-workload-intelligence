@@ -18,6 +18,7 @@ from src.evaluation.delegation_observability import (
     summarize_delegation_events,
 )
 from src.execution.delegation_policy import evaluate_delegation_policy
+from src.storage.workload_ledger import schema_relationships
 from src.execution.strategy_selector import StrategySelector
 from src.policy_assistant.audit import PolicyChangeStore
 from src.policy_assistant.change_gate import evaluate_policy_change
@@ -292,6 +293,15 @@ def console():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/workload-ledger/schema")
+def workload_ledger_schema():
+    """Return the relational backend topology for workload traceability."""
+    return {
+        **schema_relationships(),
+        "privacy": "The schema links operational metadata only; prompts and model outputs are intentionally excluded.",
+    }
 
 
 @app.post("/route")

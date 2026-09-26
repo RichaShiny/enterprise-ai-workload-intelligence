@@ -117,6 +117,17 @@ def test_root_serves_the_public_operator_console():
     assert "Evaluate a workload" in response.text
 
 
+def test_workload_ledger_schema_exposes_relational_traceability():
+    from fastapi.testclient import TestClient
+    from src.api.main import app
+
+    response = TestClient(app).get("/workload-ledger/schema")
+
+    assert response.status_code == 200
+    assert response.json()["tables"] == ["workloads", "route_decisions", "executions", "outcomes"]
+    assert "prompts" in response.json()["privacy"]
+
+
 def test_policy_assistant_api_returns_grounded_evidence():
     from fastapi.testclient import TestClient
     from src.api.main import app
