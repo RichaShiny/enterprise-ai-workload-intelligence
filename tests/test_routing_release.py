@@ -4,6 +4,7 @@ import pytest
 from src.evaluation.routing_release import (
     build_policy_decisions,
     evaluate_routing_policy_change,
+    assess_interval_directions,
     paired_bootstrap_intervals,
 )
 
@@ -61,6 +62,7 @@ def test_release_report_compares_matched_events_and_flags_cost_regression():
     assert not report.release_ready
     assert "counterfactual" in report.evidence.lower()
     assert report.confidence_intervals["cost_per_event_usd"]["lower"] > 0
+    assert report.uncertainty_assessment["cost_per_event_usd"] == "confident_regression"
 
 
 def test_build_policy_decisions_is_deterministic_and_one_per_event():
@@ -86,3 +88,12 @@ def test_paired_bootstrap_intervals_reject_unaligned_event_ids():
 
     with pytest.raises(ValueError, match="aligned event IDs"):
         paired_bootstrap_intervals(baseline, candidate, samples=10)
+
+
+def test_interval_assessment_marks_zero_crossing_as_inconclusive():
+    assessment = assess_interval_directions(
+        {"success_rate": {"lower": -0.01, "upper": 0.02}},
+        {"success_rate": True},
+    )
+
+    assert assessment == {"success_rate": "inconclusive"}
