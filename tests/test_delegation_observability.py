@@ -2,6 +2,7 @@ from src.evaluation.delegation_observability import (
     evaluate_delegation_cohort_balance,
     evaluate_delegation_evidence,
     recommend_delegation_rollout,
+    wilson_lower_bound,
     summarize_delegation_events,
 )
 
@@ -69,7 +70,29 @@ def test_rollout_recommendation_requires_human_review_after_gates_pass():
     evidence = evaluate_delegation_evidence(report, minimum_completed_events=1)
     cohort_balance = evaluate_delegation_cohort_balance(events)
 
-    recommendation = recommend_delegation_rollout(report, evidence, cohort_balance)
+    recommendation = recommend_delegation_rollout(
+        report, evidence, cohort_balance, minimum_worker_success_rate=0.2
+    )
 
     assert recommendation["status"] == "eligible_for_human_review"
     assert "not automatic" in recommendation["reason"]
+
+
+def test_rollout_uses_conservative_success_bound_not_raw_perfect_rate():
+    events = [
+        {"delegation_execution_path": "efficient_worker", "delegation_operation": "bulk_context", "task_type": "coding", "sensitivity": "low", "success": True},
+        {"delegation_execution_path": "primary_route", "delegation_operation": "bulk_context", "task_type": "coding", "sensitivity": "low", "success": True},
+    ]
+    report = summarize_delegation_events(events)
+    evidence = evaluate_delegation_evidence(report, minimum_completed_events=1)
+    cohort_balance = evaluate_delegation_cohort_balance(events)
+
+    recommendation = recommend_delegation_rollout(report, evidence, cohort_balance)
+
+    assert recommendation["status"] == "hold_success_below_floor"
+    assert recommendation["worker_success_rate"] == 1.0
+    assert recommendation["worker_success_lower_bound"] < 0.8
+
+
+def test_wilson_lower_bound_returns_none_without_trials():
+    assert wilson_lower_bound(0, 0) is None
