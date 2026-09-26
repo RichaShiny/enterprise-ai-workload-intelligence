@@ -37,6 +37,7 @@ class RoutingReleaseReport:
     candidate: dict[str, float]
     deltas: dict[str, float]
     confidence_intervals: dict[str, dict[str, float]]
+    uncertainty_assessment: dict[str, str]
     regressions: list[str]
     improvements: list[str]
     unchanged: list[str]
@@ -133,6 +134,23 @@ def paired_bootstrap_intervals(
     }
 
 
+def assess_interval_directions(
+    confidence_intervals: dict[str, dict[str, float]],
+    higher_is_better: dict[str, bool],
+) -> dict[str, str]:
+    """Classify whether a bootstrap interval supports a beneficial or harmful direction."""
+    assessment = {}
+    for metric, interval in confidence_intervals.items():
+        lower, upper = interval["lower"], interval["upper"]
+        if lower <= 0 <= upper:
+            assessment[metric] = "inconclusive"
+            continue
+        candidate_increased = lower > 0
+        beneficial = candidate_increased == higher_is_better.get(metric, True)
+        assessment[metric] = "confident_improvement" if beneficial else "confident_regression"
+    return assessment
+
+
 def evaluate_routing_policy_change(
     outcomes: pd.DataFrame,
     baseline_policy: str,
@@ -176,6 +194,10 @@ def evaluate_routing_policy_change(
         candidate_decisions,
         samples=bootstrap_samples,
     )
+    uncertainty_assessment = assess_interval_directions(
+        confidence_intervals,
+        higher_is_better,
+    )
     return RoutingReleaseReport(
         baseline_policy=baseline_policy,
         candidate_policy=candidate_policy,
@@ -184,6 +206,7 @@ def evaluate_routing_policy_change(
         candidate=candidate,
         deltas={metric: candidate[metric] - baseline[metric] for metric in baseline},
         confidence_intervals=confidence_intervals,
+        uncertainty_assessment=uncertainty_assessment,
         regressions=comparison.regressions,
         improvements=comparison.improvements,
         unchanged=comparison.unchanged,
