@@ -145,6 +145,15 @@ def test_workload_trace_api_persists_and_returns_a_joined_trace(tmp_path, monkey
     }
     client = TestClient(app)
 
+    for field in ("workload_created_at", "decided_at", "started_at", "recorded_at"):
+        payload[field] = "2026-01-01T12:00:00Z"
+    for invalid_time in ("now", "2026-01-01T12:00:00", "2026-01-01T11:59:59Z"):
+        invalid = client.post("/workload-ledger/traces", json={**payload, "recorded_at": invalid_time})
+        assert invalid.status_code == 422
+    assert client.get("/workload-ledger/traces").json()["traces"] == []
+    # Different offsets representing the same instant are valid.
+    payload["decided_at"] = "2026-01-01T07:00:00-05:00"
+
     recorded = client.post("/workload-ledger/traces", json=payload)
     traces = client.get("/workload-ledger/traces?execution_path=efficient_worker&success=true")
 
