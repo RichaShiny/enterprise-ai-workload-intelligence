@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from collections import Counter
 from pathlib import Path
 from statistics import mean
@@ -7,7 +8,7 @@ from uuid import uuid4
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from src.evaluation.release_audit import RoutingReleaseStore
 from src.evaluation.routing_release import evaluate_routing_policy_change
@@ -170,6 +171,22 @@ class LedgerTraceRequest(BaseModel):
     total_tokens: int | None = Field(default=None, ge=0)
     verification_passed: bool | None = None
     recorded_at: str = Field(min_length=1, max_length=64)
+
+    @model_validator(mode="after")
+    def validate_timeline(self):
+        fields = ("workload_created_at", "decided_at", "started_at", "recorded_at")
+        timestamps = []
+        for field in fields:
+            try:
+                timestamp = datetime.fromisoformat(getattr(self, field))
+            except ValueError as error:
+                raise ValueError(f"{field} must be an ISO 8601 timestamp with a timezone") from error
+            if timestamp.utcoffset() is None:
+                raise ValueError(f"{field} must include a timezone")
+            timestamps.append(timestamp)
+        if any(earlier > later for earlier, later in zip(timestamps, timestamps[1:])):
+            raise ValueError("Trace timestamps must follow workload creation, decision, execution, outcome order")
+        return self
 
 
 telemetry_store = TelemetryStore(
