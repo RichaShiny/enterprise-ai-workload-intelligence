@@ -43,6 +43,27 @@ def test_policy_assistant_abstains_without_matching_evidence():
     assert result["evidence"] == []
 
 
+def test_contextual_identity_disambiguates_policy_with_generic_body_text():
+    policies = (
+        PolicyDocument(
+            "security-record-retention", "Retention requirements", "security", "1",
+            "Records must be retained for the required period.",
+        ),
+        PolicyDocument(
+            "finance-expense-retention", "Retention requirements", "finance", "1",
+            "Records must be retained for the required period.",
+        ),
+    )
+
+    result = ApprovedPolicyAssistant(policies).answer(
+        "What is the finance expense retention requirement?"
+    )
+
+    assert result["evidence"][0]["document_id"] == "finance-expense-retention"
+    assert result["retrieval"]["contextualized"] is True
+    assert result["evidence"][0]["excerpt"] == policies[1].text
+
+
 def test_policy_evaluation_reports_retrieval_and_safe_abstention():
     from src.policy_assistant.evaluation import evaluate_policy_assistant
 

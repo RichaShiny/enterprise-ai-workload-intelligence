@@ -2,7 +2,10 @@ from src.policy_assistant.service import ApprovedPolicyAssistant, PolicyDocument
 
 
 class FakeSemanticReranker:
+    contextual_texts = []
+
     def rerank(self, _question, results):
+        self.contextual_texts = [result.text for result in results]
         class Ranked:
             def __init__(self, document_id, ranking_score):
                 self.document_id = document_id
@@ -27,3 +30,5 @@ def test_semantic_reranking_reorders_lexical_candidates_without_changing_evidenc
     assert result["retrieval"]["ranking_method"] == "semantic"
     assert result["evidence"][0]["document_id"] == "second"
     assert result["evidence"][0]["ranking_method"] == "semantic"
+    assert "Department: finance" in assistant.semantic_reranker.contextual_texts[0]
+    assert result["evidence"][0]["excerpt"] == policies[1].text
