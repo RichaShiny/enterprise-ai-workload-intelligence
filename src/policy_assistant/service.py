@@ -76,7 +76,7 @@ class ApprovedPolicyAssistant:
                 "grounded": False,
                 "abstained": True,
                 "reason": "No approved policy matched the question.",
-                "retrieval": {"ranking_method": "semantic" if self.semantic_reranker else "lexical"},
+                "retrieval": self._retrieval_metadata(),
                 "evidence": [],
             }
 
@@ -90,7 +90,7 @@ class ApprovedPolicyAssistant:
             "grounded": True,
             "abstained": False,
             "reason": "Answer is an evidence extract from the highest-ranking approved policy.",
-            "retrieval": {"ranking_method": "semantic" if self.semantic_reranker else "lexical"},
+            "retrieval": self._retrieval_metadata(),
             "evidence": [asdict(item) for item in relevant],
         }
 
@@ -100,12 +100,17 @@ class ApprovedPolicyAssistant:
             return evidence
         from src.retrieval.index import RetrievalResult
 
+        policies_by_id = {policy.document_id: policy for policy in self.policies}
         results = [
             RetrievalResult(
                 document_id=item.document_id,
-                text=item.excerpt,
+                text=self._contextualized_text(policies_by_id[item.document_id]),
                 score=item.relevance_score,
-                metadata={},
+                metadata={
+                    "title": item.title,
+                    "department": item.department,
+                    "version": item.version,
+                },
             )
             for item in evidence
         ]
@@ -129,9 +134,25 @@ class ApprovedPolicyAssistant:
             if term not in STOP_WORDS and len(term) > 1
         }
 
+    @staticmethod
+    def _contextualized_text(policy: PolicyDocument) -> str:
+        """Prepend stable document identity so retrieval retains policy context."""
+        identity = (
+            f"Approved policy: {policy.title}. Department: {policy.department}. "
+            f"Version: {policy.version}. Document ID: {policy.document_id}."
+        )
+        return f"{identity}\n{policy.text}"
+
+    def _retrieval_metadata(self) -> dict:
+        return {
+            "ranking_method": "semantic" if self.semantic_reranker else "lexical",
+            "contextualized": True,
+            "context_fields": ["title", "department", "version", "document_id"],
+        }
+
     def _evidence(self, question: str, policy: PolicyDocument) -> PolicyEvidence:
         query_terms = self._terms(question)
-        policy_terms = self._terms(f"{policy.title} {policy.text}")
+        policy_terms = self._terms(self._contextualized_text(policy))
         score = len(query_terms & policy_terms) / max(len(query_terms), 1)
         return PolicyEvidence(
             document_id=policy.document_id,
