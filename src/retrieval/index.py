@@ -1,4 +1,7 @@
 from dataclasses import dataclass
+from collections import Counter
+import math
+import re
 from typing import List, Dict, Any
 
 import numpy as np
@@ -89,3 +92,85 @@ class LexicalRetriever:
                 return False
 
         return True
+
+
+class BM25Retriever:
+    """Deterministic Okapi BM25 retrieval with optional metadata filtering."""
+
+    def __init__(self, k1: float = 1.5, b: float = 0.75):
+        self.k1 = k1
+        self.b = b
+        self.documents: List[Dict[str, Any]] = []
+        self.term_frequencies: List[Counter[str]] = []
+        self.document_frequencies: Counter[str] = Counter()
+        self.document_lengths: List[int] = []
+        self.average_document_length = 0.0
+        self._fitted = False
+
+    @staticmethod
+    def _tokens(text: str) -> List[str]:
+        return re.findall(r"[a-z0-9]+", text.lower())
+
+    def fit(self, documents: List[Dict[str, Any]]) -> None:
+        self.documents = documents
+        tokenized = [self._tokens(document["text"]) for document in documents]
+        self.term_frequencies = [Counter(tokens) for tokens in tokenized]
+        self.document_lengths = [len(tokens) for tokens in tokenized]
+        self.document_frequencies = Counter(
+            term for frequencies in self.term_frequencies for term in frequencies
+        )
+        self.average_document_length = (
+            sum(self.document_lengths) / len(self.document_lengths)
+            if self.document_lengths else 0.0
+        )
+        self._fitted = True
+
+    def search(
+        self,
+        query: str,
+        top_k: int = 5,
+        metadata_filters: Dict[str, Any] | None = None,
+    ) -> List[RetrievalResult]:
+        if not self._fitted:
+            raise RuntimeError("Retriever must be fit before calling search().")
+
+        query_terms = self._tokens(query)
+        candidates = [
+            index for index, document in enumerate(self.documents)
+            if not metadata_filters or LexicalRetriever._matches_metadata(
+                document.get("metadata", {}), metadata_filters
+            )
+        ]
+        document_count = len(self.documents)
+        scored = []
+        for index in candidates:
+            score = 0.0
+            frequencies = self.term_frequencies[index]
+            length = self.document_lengths[index]
+            for term in query_terms:
+                frequency = frequencies[term]
+                if not frequency:
+                    continue
+                document_frequency = self.document_frequencies[term]
+                inverse_frequency = math.log(
+                    1 + (document_count - document_frequency + 0.5) / (document_frequency + 0.5)
+                )
+                normalization = frequency + self.k1 * (
+                    1 - self.b + self.b * length / max(self.average_document_length, 1)
+                )
+                score += inverse_frequency * frequency * (self.k1 + 1) / normalization
+            scored.append((index, score))
+
+        ranked = sorted(
+            scored,
+            key=lambda item: (-item[1], self.documents[item[0]]["document_id"]),
+        )[:top_k]
+        return [
+            RetrievalResult(
+                document_id=self.documents[index]["document_id"],
+                text=self.documents[index]["text"],
+                score=float(score),
+                metadata=self.documents[index].get("metadata", {}),
+            )
+            for index, score in ranked
+        ]
