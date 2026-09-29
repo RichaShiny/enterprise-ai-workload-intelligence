@@ -53,17 +53,29 @@ class ApprovedPolicyAssistant:
     ):
         self.policies = policies
         self.semantic_reranker = semantic_reranker
+        from src.retrieval.index import BM25Retriever
+
+        self.retriever = BM25Retriever()
+        self.retriever.fit([
+            {
+                "document_id": policy.document_id,
+                "text": self._contextualized_text(policy),
+                "metadata": {"department": policy.department},
+            }
+            for policy in policies
+        ])
 
     def answer(self, question: str, department: str | None = None) -> dict:
-        candidates = [
-            policy for policy in self.policies
-            if not department or policy.department == department.lower()
+        policies_by_id = {policy.document_id: policy for policy in self.policies}
+        matches = self.retriever.search(
+            question,
+            top_k=3,
+            metadata_filters={"department": department.lower()} if department else None,
+        )
+        lexical = [
+            self._evidence(question, policies_by_id[match.document_id], match.score)
+            for match in matches
         ]
-        lexical = sorted(
-            (self._evidence(question, policy) for policy in candidates),
-            key=lambda item: item.relevance_score,
-            reverse=True,
-        )[:3]
         evidence = self._rerank(question, lexical)
 
         primary = evidence[0] if evidence else None
@@ -145,12 +157,14 @@ class ApprovedPolicyAssistant:
 
     def _retrieval_metadata(self) -> dict:
         return {
-            "ranking_method": "semantic" if self.semantic_reranker else "lexical",
+            "ranking_method": "semantic" if self.semantic_reranker else "contextual_bm25",
             "contextualized": True,
             "context_fields": ["title", "department", "version", "document_id"],
         }
 
-    def _evidence(self, question: str, policy: PolicyDocument) -> PolicyEvidence:
+    def _evidence(
+        self, question: str, policy: PolicyDocument, ranking_score: float = 0.0
+    ) -> PolicyEvidence:
         query_terms = self._terms(question)
         policy_terms = self._terms(self._contextualized_text(policy))
         score = len(query_terms & policy_terms) / max(len(query_terms), 1)
@@ -161,6 +175,6 @@ class ApprovedPolicyAssistant:
             version=policy.version,
             excerpt=policy.text,
             relevance_score=round(score, 3),
-            ranking_score=round(score, 3),
-            ranking_method="lexical",
+            ranking_score=round(ranking_score, 3),
+            ranking_method="contextual_bm25",
         )

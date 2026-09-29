@@ -29,6 +29,7 @@ def test_policy_assistant_returns_cited_approved_evidence():
     assert result["grounded"] is True
     assert result["abstained"] is False
     assert result["evidence"][0]["document_id"] == "finance-expense-retention"
+    assert result["retrieval"]["ranking_method"] == "contextual_bm25"
     assert len(result["evidence"]) == 1
     assert "seven years" in result["answer"]
 
