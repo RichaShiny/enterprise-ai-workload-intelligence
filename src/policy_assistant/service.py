@@ -12,6 +12,8 @@ STOP_WORDS = {
 }
 ABSTENTION_THRESHOLD = 0.20
 MINIMUM_RANKING_MARGIN = 0.05
+ABSTENTION_REASON_INSUFFICIENT_EVIDENCE = "insufficient_evidence"
+ABSTENTION_REASON_AMBIGUOUS_RETRIEVAL = "ambiguous_retrieval"
 
 
 @dataclass(frozen=True)
@@ -95,6 +97,7 @@ class ApprovedPolicyAssistant:
                 ),
                 "grounded": False,
                 "abstained": True,
+                "abstention_reason_code": ABSTENTION_REASON_INSUFFICIENT_EVIDENCE,
                 "reason": "No approved policy matched the question.",
                 "retrieval": retrieval,
                 "evidence": [],
@@ -109,6 +112,7 @@ class ApprovedPolicyAssistant:
                 ),
                 "grounded": False,
                 "abstained": True,
+                "abstention_reason_code": ABSTENTION_REASON_AMBIGUOUS_RETRIEVAL,
                 "reason": "Top approved-policy candidates were too close to distinguish safely.",
                 "retrieval": retrieval,
                 "evidence": [],
@@ -123,6 +127,7 @@ class ApprovedPolicyAssistant:
             "answer": f"According to {primary.title}, {primary.excerpt}",
             "grounded": True,
             "abstained": False,
+            "abstention_reason_code": None,
             "reason": "Answer is an evidence extract from the highest-ranking approved policy.",
             "retrieval": retrieval,
             "evidence": [asdict(item) for item in relevant],
