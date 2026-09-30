@@ -51,6 +51,29 @@ def test_policy_assistant_returns_cited_approved_evidence():
     assert "seven years" in result["answer"]
 
 
+def test_policy_evidence_has_content_bound_provenance_without_extra_content():
+    policy = PolicyDocument(
+        "finance-retention", "Retention", "finance", "1", "Keep records for seven years."
+    )
+    revised = PolicyDocument(
+        "finance-retention", "Retention", "finance", "1", "Keep records for eight years."
+    )
+
+    original = ApprovedPolicyAssistant((policy,)).answer("finance retention records")
+    repeated = ApprovedPolicyAssistant((policy,)).answer("finance retention records")
+    changed = ApprovedPolicyAssistant((revised,)).answer("finance retention records")
+
+    evidence = original["evidence"][0]
+    assert evidence["provenance_id"].startswith("sha256:")
+    assert evidence["provenance_id"] == repeated["evidence"][0]["provenance_id"]
+    assert evidence["provenance_id"] != changed["evidence"][0]["provenance_id"]
+    assert set(evidence) == {
+        "document_id", "title", "department", "version", "provenance_id", "excerpt",
+        "relevance_score", "ranking_score", "ranking_method", "matched_query_terms",
+        "score_explanation",
+    }
+
+
 def test_policy_assistant_abstains_without_matching_evidence():
     result = ApprovedPolicyAssistant().answer(
         "Which office has the best parking?"

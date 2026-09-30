@@ -1,5 +1,7 @@
 from dataclasses import asdict, dataclass
 from typing import Any
+import hashlib
+import json
 import re
 
 
@@ -27,6 +29,7 @@ class PolicyEvidence:
     title: str
     department: str
     version: str
+    provenance_id: str
     excerpt: str
     relevance_score: float
     ranking_score: float
@@ -176,6 +179,14 @@ class ApprovedPolicyAssistant:
         )
         return f"{identity}\n{policy.text}"
 
+    @staticmethod
+    def _provenance_id(policy: PolicyDocument) -> str:
+        """Return a stable identifier for the exact approved document revision."""
+        canonical_document = json.dumps(
+            asdict(policy), sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
+        return f"sha256:{hashlib.sha256(canonical_document).hexdigest()}"
+
     def _retrieval_metadata(self, evidence: list[PolicyEvidence]) -> dict:
         primary = evidence[0] if evidence else None
         runner_up = evidence[1] if len(evidence) > 1 else None
@@ -230,6 +241,7 @@ class ApprovedPolicyAssistant:
             title=policy.title,
             department=policy.department,
             version=policy.version,
+            provenance_id=self._provenance_id(policy),
             excerpt=policy.text,
             relevance_score=round(score, 3),
             ranking_score=round(ranking_score, 3),
