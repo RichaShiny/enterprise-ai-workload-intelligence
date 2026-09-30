@@ -64,6 +64,8 @@ def evaluate_policy_assistant(
         correct = retrieved_id == case.expected_document_id
         outcomes.append({
             "question": case.question,
+            "department": case.department,
+            "answerability": "answerable" if case.expected_document_id else "unanswerable",
             "expected_document_id": case.expected_document_id,
             "retrieved_document_id": retrieved_id,
             "grounded": result["grounded"],
@@ -95,11 +97,35 @@ def evaluate_policy_assistant(
     correct_retrievals = sum(item["correct"] for item in answerable)
     correct_abstentions = sum(item["correct"] and item["abstained"] for item in unanswerable)
 
+    departments = sorted({item["department"] for item in outcomes if item["department"]})
+    by_department = {}
+    for department in departments:
+        department_outcomes = [item for item in outcomes if item["department"] == department]
+        by_department[department] = {
+            "cases": len(department_outcomes),
+            "accuracy": sum(item["correct"] for item in department_outcomes) / len(department_outcomes),
+        }
+
+    by_answerability = {
+        "answerable": {
+            "cases": len(answerable),
+            "accuracy": correct_retrievals / len(answerable) if answerable else None,
+        },
+        "unanswerable": {
+            "cases": len(unanswerable),
+            "accuracy": correct_abstentions / len(unanswerable) if unanswerable else None,
+        },
+    }
+
     return {
         "cases": len(outcomes),
         "retrieval_accuracy": correct_retrievals / len(answerable) if answerable else 0.0,
         "safe_abstention_rate": correct_abstentions / len(unanswerable) if unanswerable else 0.0,
         "overall_accuracy": sum(item["correct"] for item in outcomes) / len(outcomes) if outcomes else 0.0,
+        "breakdowns": {
+            "by_department": by_department,
+            "by_answerability": by_answerability,
+        },
         "retrieval_consistency": (
             sum(item["variant_consistent"] for item in outcomes) / len(outcomes)
             if outcomes else 0.0

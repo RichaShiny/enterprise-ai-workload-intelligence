@@ -153,6 +153,16 @@ def test_policy_evaluation_reports_retrieval_and_safe_abstention():
     assert report["retrieval_accuracy"] == 1.0
     assert report["safe_abstention_rate"] == 1.0
     assert report["overall_accuracy"] == 1.0
+    assert report["breakdowns"]["by_department"] == {
+        "finance": {"cases": 2, "accuracy": 1.0},
+        "security": {"cases": 2, "accuracy": 1.0},
+    }
+    assert report["breakdowns"]["by_answerability"] == {
+        "answerable": {"cases": 4, "accuracy": 1.0},
+        "unanswerable": {"cases": 1, "accuracy": 1.0},
+    }
+    assert report["results"][0]["answerability"] == "answerable"
+    assert report["results"][-1]["answerability"] == "unanswerable"
     assert report["variants"] == 6
     assert report["retrieval_consistency"] == 1.0
     assert all(result["correct"] for result in report["variant_results"])
