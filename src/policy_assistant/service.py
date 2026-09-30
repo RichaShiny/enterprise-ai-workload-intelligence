@@ -1,5 +1,7 @@
 from dataclasses import asdict, dataclass
 from typing import Any
+import hashlib
+import json
 import re
 
 
@@ -11,6 +13,8 @@ STOP_WORDS = {
 ABSTENTION_THRESHOLD = 0.20
 MINIMUM_RANKING_MARGIN = 0.05
 MAX_QUESTION_LENGTH = 500
+ABSTENTION_REASON_INSUFFICIENT_EVIDENCE = "insufficient_evidence"
+ABSTENTION_REASON_AMBIGUOUS_RETRIEVAL = "ambiguous_retrieval"
 
 
 @dataclass(frozen=True)
@@ -28,6 +32,7 @@ class PolicyEvidence:
     title: str
     department: str
     version: str
+    provenance_id: str
     excerpt: str
     relevance_score: float
     ranking_score: float
@@ -109,6 +114,7 @@ class ApprovedPolicyAssistant:
                 ),
                 "grounded": False,
                 "abstained": True,
+                "abstention_reason_code": ABSTENTION_REASON_INSUFFICIENT_EVIDENCE,
                 "reason": "No approved policy matched the question.",
                 "retrieval": retrieval,
                 "evidence": [],
@@ -123,6 +129,7 @@ class ApprovedPolicyAssistant:
                 ),
                 "grounded": False,
                 "abstained": True,
+                "abstention_reason_code": ABSTENTION_REASON_AMBIGUOUS_RETRIEVAL,
                 "reason": "Top approved-policy candidates were too close to distinguish safely.",
                 "retrieval": retrieval,
                 "evidence": [],
@@ -137,6 +144,7 @@ class ApprovedPolicyAssistant:
             "answer": f"According to {primary.title}, {primary.excerpt}",
             "grounded": True,
             "abstained": False,
+            "abstention_reason_code": None,
             "reason": "Answer is an evidence extract from the highest-ranking approved policy.",
             "retrieval": retrieval,
             "evidence": [asdict(item) for item in relevant],
@@ -193,6 +201,14 @@ class ApprovedPolicyAssistant:
         )
         return f"{identity}\n{policy.text}"
 
+    @staticmethod
+    def _provenance_id(policy: PolicyDocument) -> str:
+        """Return a stable identifier for the exact approved document revision."""
+        canonical_document = json.dumps(
+            asdict(policy), sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
+        return f"sha256:{hashlib.sha256(canonical_document).hexdigest()}"
+
     def _retrieval_metadata(self, evidence: list[PolicyEvidence]) -> dict:
         primary = evidence[0] if evidence else None
         runner_up = evidence[1] if len(evidence) > 1 else None
@@ -207,6 +223,20 @@ class ApprovedPolicyAssistant:
                 if ranking_margin < MINIMUM_RANKING_MARGIN:
                     confidence_status = "ambiguous"
 
+        candidate_diagnostics = [
+            {
+                "rank": rank,
+                "document_id": item.document_id,
+                "department": item.department,
+                "version": item.version,
+                "relevance_score": item.relevance_score,
+                "ranking_score": round(item.ranking_score, 3),
+                "eligible": item.relevance_score >= ABSTENTION_THRESHOLD,
+                "selected": rank == 1 and confidence_status == "confident",
+            }
+            for rank, item in enumerate(evidence, start=1)
+        ]
+
         return {
             "ranking_method": "semantic" if self.semantic_reranker else "contextual_bm25",
             "contextualized": True,
@@ -216,6 +246,7 @@ class ApprovedPolicyAssistant:
             "minimum_ranking_margin": MINIMUM_RANKING_MARGIN,
             "ranking_margin": round(ranking_margin, 3) if ranking_margin is not None else None,
             "confidence_status": confidence_status,
+            "candidate_diagnostics": candidate_diagnostics,
             "relevance_metric": "matched non-stopword query terms / query terms",
             "query_normalization": ["thousands_separators", "k_magnitude", "m_magnitude"],
         }
@@ -232,6 +263,7 @@ class ApprovedPolicyAssistant:
             title=policy.title,
             department=policy.department,
             version=policy.version,
+            provenance_id=self._provenance_id(policy),
             excerpt=policy.text,
             relevance_score=round(score, 3),
             ranking_score=round(ranking_score, 3),

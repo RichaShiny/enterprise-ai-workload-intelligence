@@ -190,6 +190,9 @@ def test_policy_assistant_api_returns_grounded_evidence():
     assert response.json()["policy_result"]["evidence"][0]["matched_query_terms"]
     assert response.json()["policy_result"]["retrieval"]["abstention_threshold"] == 0.20
     assert response.json()["policy_result"]["retrieval"]["confidence_status"] == "confident"
+    diagnostics = response.json()["policy_result"]["retrieval"]["candidate_diagnostics"]
+    assert diagnostics[0]["selected"] is True
+    assert "excerpt" not in diagnostics[0]
     assert response.json()["model_summary"]["status"] == "disabled"
     assert response.json()["execution"]["status"] == "accepted_with_fallback"
     assert response.json()["execution"]["response_source"] == "deterministic_evidence"
