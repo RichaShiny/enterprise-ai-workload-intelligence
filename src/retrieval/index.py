@@ -126,6 +126,18 @@ class BM25Retriever:
         return re.findall(r"[a-z0-9]+", normalize_retrieval_text(text))
 
     def fit(self, documents: List[Dict[str, Any]]) -> None:
+        seen_document_ids = set()
+        duplicate_document_ids = set()
+        for document in documents:
+            document_id = document["document_id"]
+            if document_id in seen_document_ids:
+                duplicate_document_ids.add(document_id)
+            seen_document_ids.add(document_id)
+
+        if duplicate_document_ids:
+            duplicates = ", ".join(sorted(duplicate_document_ids))
+            raise ValueError(f"document_id values must be unique; duplicates: {duplicates}")
+
         self.documents = documents
         tokenized = [self._tokens(document["text"]) for document in documents]
         self.term_frequencies = [Counter(tokens) for tokens in tokenized]

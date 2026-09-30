@@ -28,6 +28,28 @@ def test_bm25_applies_metadata_filters_before_ranking():
     assert [result.document_id for result in results] == ["security"]
 
 
+def test_bm25_breaks_equal_score_ties_by_document_id():
+    retriever = BM25Retriever()
+    retriever.fit([
+        {"document_id": "z-policy", "text": "retention policy", "metadata": {}},
+        {"document_id": "a-policy", "text": "retention policy", "metadata": {}},
+    ])
+
+    results = retriever.search("retention")
+
+    assert [result.document_id for result in results] == ["a-policy", "z-policy"]
+
+
+def test_bm25_rejects_duplicate_document_ids():
+    retriever = BM25Retriever()
+
+    with pytest.raises(ValueError, match=r"duplicates: shared-policy"):
+        retriever.fit([
+            {"document_id": "shared-policy", "text": "finance policy", "metadata": {}},
+            {"document_id": "shared-policy", "text": "security policy", "metadata": {}},
+        ])
+
+
 def test_bm25_requires_a_fitted_index():
     with pytest.raises(RuntimeError, match="fit"):
         BM25Retriever().search("policy")
