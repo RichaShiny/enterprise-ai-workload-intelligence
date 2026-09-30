@@ -8,7 +8,7 @@ from uuid import uuid4
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from src.evaluation.release_audit import RoutingReleaseStore
 from src.evaluation.routing_release import evaluate_routing_policy_change
@@ -86,6 +86,13 @@ class PolicyAssistantRequest(BaseModel):
     complexity: str = "medium"
     sensitivity: str = "medium"
     risk_level: str = "medium"
+
+    @field_validator("question", mode="before")
+    @classmethod
+    def normalize_question(cls, value):
+        if isinstance(value, str):
+            value = value.strip()
+        return value
 
 
 class DecisionAssistantRequest(PolicyAssistantRequest):
