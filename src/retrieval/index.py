@@ -29,7 +29,22 @@ def normalize_retrieval_text(text: str) -> str:
         expanded = value * multiplier
         return str(int(expanded)) if expanded.is_integer() else str(expanded)
 
-    return re.sub(r"\b(\d+(?:\.\d+)?)([km])\b", expand_suffix, normalized)
+    normalized = re.sub(r"\b(\d+(?:\.\d+)?)([km])\b", expand_suffix, normalized)
+
+    currency_names = {
+        "$": "dollars",
+        "€": "euros",
+        "£": "pounds",
+        "¥": "yen",
+    }
+    for symbol, currency_name in currency_names.items():
+        normalized = re.sub(
+            rf"{re.escape(symbol)}\s*(\d+(?:\.\d+)?)",
+            rf"\1 {currency_name}",
+            normalized,
+        )
+
+    return re.sub(r"(\d+(?:\.\d+)?)\s*%", r"\1 percent", normalized)
 
 
 class LexicalRetriever:

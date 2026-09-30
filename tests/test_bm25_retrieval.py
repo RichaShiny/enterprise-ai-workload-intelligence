@@ -86,9 +86,13 @@ def test_bm25_empty_corpus_is_searchable():
 @pytest.mark.parametrize(
     ("query", "expected"),
     [
-        ("spend above $25,000", "spend above $25000"),
+        ("spend above $25,000", "spend above 25000 dollars"),
         ("spend above 25k", "spend above 25000"),
         ("budget is 1.5m", "budget is 1500000"),
+        ("margin is 12.5%", "margin is 12.5 percent"),
+        ("fees of €2k", "fees of 2000 euros"),
+        ("limit is £500", "limit is 500 pounds"),
+        ("price is ¥300", "price is 300 yen"),
     ],
 )
 def test_retrieval_text_normalizes_equivalent_amounts(query, expected):
@@ -105,3 +109,24 @@ def test_bm25_matches_numeric_shorthand_to_catalog_amounts():
     results = retriever.search("Who approves 25k?")
 
     assert results[0].document_id == "high"
+
+
+@pytest.mark.parametrize(
+    ("query", "catalog_text"),
+    [
+        ("Does the 20% threshold apply?", "A 20 percent threshold applies"),
+        ("Who approves $25k?", "Approval above 25000 dollars"),
+        ("What is the €2k limit?", "The limit is 2000 euros"),
+    ],
+)
+def test_bm25_matches_symbolic_numeric_forms_to_words(query, catalog_text):
+    retriever = BM25Retriever()
+    retriever.fit([
+        {"document_id": "match", "text": catalog_text, "metadata": {}},
+        {"document_id": "other", "text": "unrelated operating guidance", "metadata": {}},
+    ])
+
+    results = retriever.search(query)
+
+    assert results[0].document_id == "match"
+    assert results[0].score > results[1].score
