@@ -12,6 +12,7 @@ from src.policy_assistant.service import APPROVED_POLICIES, ApprovedPolicyAssist
 QUALITY_METRICS = {
     "retrieval_accuracy": True,
     "safe_abstention_rate": True,
+    "retrieval_consistency": True,
 }
 
 
@@ -41,7 +42,7 @@ def evaluate_policy_change(
     candidate_policies: tuple[PolicyDocument, ...],
     baseline_policies: tuple[PolicyDocument, ...] = APPROVED_POLICIES,
 ) -> dict:
-    """Block a revision when it regresses retrieval or safe abstention."""
+    """Block a revision when accuracy, abstention, or query robustness regresses."""
     baseline = evaluate_policy_assistant(ApprovedPolicyAssistant(baseline_policies))
     candidate = evaluate_policy_assistant(ApprovedPolicyAssistant(candidate_policies))
     baseline_metrics = {name: baseline[name] for name in QUALITY_METRICS}

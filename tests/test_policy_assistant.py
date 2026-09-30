@@ -153,6 +153,20 @@ def test_policy_evaluation_reports_retrieval_and_safe_abstention():
     assert report["retrieval_accuracy"] == 1.0
     assert report["safe_abstention_rate"] == 1.0
     assert report["overall_accuracy"] == 1.0
+    assert report["variants"] == 6
+    assert report["retrieval_consistency"] == 1.0
+    assert all(result["correct"] for result in report["variant_results"])
+
+
+def test_policy_change_gate_includes_retrieval_consistency_in_release_decision():
+    from src.policy_assistant.change_gate import evaluate_policy_change
+
+    report = evaluate_policy_change(APPROVED_POLICIES)
+
+    assert report["passed"] is True
+    assert report["baseline"]["retrieval_consistency"] == 1.0
+    assert report["candidate"]["retrieval_consistency"] == 1.0
+    assert "retrieval_consistency" in report["unchanged"]
 
 
 def test_policy_change_gate_rejects_a_revision_that_breaks_expected_retrieval():
