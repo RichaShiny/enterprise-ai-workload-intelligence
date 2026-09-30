@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from collections import Counter
 import math
+from numbers import Integral, Real
 import re
 from typing import List, Dict, Any
 
@@ -28,7 +29,22 @@ def normalize_retrieval_text(text: str) -> str:
         expanded = value * multiplier
         return str(int(expanded)) if expanded.is_integer() else str(expanded)
 
-    return re.sub(r"\b(\d+(?:\.\d+)?)([km])\b", expand_suffix, normalized)
+    normalized = re.sub(r"\b(\d+(?:\.\d+)?)([km])\b", expand_suffix, normalized)
+
+    currency_names = {
+        "$": "dollars",
+        "€": "euros",
+        "£": "pounds",
+        "¥": "yen",
+    }
+    for symbol, currency_name in currency_names.items():
+        normalized = re.sub(
+            rf"{re.escape(symbol)}\s*(\d+(?:\.\d+)?)",
+            rf"\1 {currency_name}",
+            normalized,
+        )
+
+    return re.sub(r"(\d+(?:\.\d+)?)\s*%", r"\1 percent", normalized)
 
 
 class LexicalRetriever:
@@ -112,6 +128,10 @@ class BM25Retriever:
     """Deterministic Okapi BM25 retrieval with optional metadata filtering."""
 
     def __init__(self, k1: float = 1.5, b: float = 0.75):
+        if isinstance(k1, bool) or not isinstance(k1, Real) or not math.isfinite(k1) or k1 <= 0:
+            raise ValueError("k1 must be a finite number greater than 0.")
+        if isinstance(b, bool) or not isinstance(b, Real) or not math.isfinite(b) or not 0 <= b <= 1:
+            raise ValueError("b must be a finite number between 0 and 1.")
         self.k1 = k1
         self.b = b
         self.documents: List[Dict[str, Any]] = []
@@ -126,6 +146,18 @@ class BM25Retriever:
         return re.findall(r"[a-z0-9]+", normalize_retrieval_text(text))
 
     def fit(self, documents: List[Dict[str, Any]]) -> None:
+        seen_document_ids = set()
+        duplicate_document_ids = set()
+        for document in documents:
+            document_id = document["document_id"]
+            if document_id in seen_document_ids:
+                duplicate_document_ids.add(document_id)
+            seen_document_ids.add(document_id)
+
+        if duplicate_document_ids:
+            duplicates = ", ".join(sorted(duplicate_document_ids))
+            raise ValueError(f"document_id values must be unique; duplicates: {duplicates}")
+
         self.documents = documents
         tokenized = [self._tokens(document["text"]) for document in documents]
         self.term_frequencies = [Counter(tokens) for tokens in tokenized]
@@ -147,6 +179,11 @@ class BM25Retriever:
     ) -> List[RetrievalResult]:
         if not self._fitted:
             raise RuntimeError("Retriever must be fit before calling search().")
+        if isinstance(top_k, bool) or not isinstance(top_k, Integral) or top_k <= 0:
+            raise ValueError("top_k must be a positive integer.")
+
+        if not self.documents:
+            return []
 
         query_terms = self._tokens(query)
         candidates = [

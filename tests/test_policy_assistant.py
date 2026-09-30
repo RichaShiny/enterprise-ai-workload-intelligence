@@ -28,17 +28,51 @@ def test_policy_assistant_returns_cited_approved_evidence():
 
     assert result["grounded"] is True
     assert result["abstained"] is False
+    assert result["abstention_reason_code"] is None
     assert result["evidence"][0]["document_id"] == "finance-expense-retention"
     assert result["retrieval"]["ranking_method"] == "contextual_bm25"
     assert result["retrieval"]["abstention_threshold"] == 0.20
     assert result["retrieval"]["candidate_limit"] == 3
     assert result["retrieval"]["confidence_status"] == "confident"
+    assert result["retrieval"]["candidate_diagnostics"][0] == {
+        "rank": 1,
+        "document_id": "finance-expense-retention",
+        "department": "finance",
+        "version": "2026.1",
+        "relevance_score": 0.8,
+        "ranking_score": result["evidence"][0]["ranking_score"],
+        "eligible": True,
+        "selected": True,
+    }
     assert result["evidence"][0]["matched_query_terms"] == [
         "expense", "finance", "records", "retained"
     ]
     assert "Matched 4 of 5" in result["evidence"][0]["score_explanation"]
     assert len(result["evidence"]) == 1
     assert "seven years" in result["answer"]
+
+
+def test_policy_evidence_has_content_bound_provenance_without_extra_content():
+    policy = PolicyDocument(
+        "finance-retention", "Retention", "finance", "1", "Keep records for seven years."
+    )
+    revised = PolicyDocument(
+        "finance-retention", "Retention", "finance", "1", "Keep records for eight years."
+    )
+
+    original = ApprovedPolicyAssistant((policy,)).answer("finance retention records")
+    repeated = ApprovedPolicyAssistant((policy,)).answer("finance retention records")
+    changed = ApprovedPolicyAssistant((revised,)).answer("finance retention records")
+
+    evidence = original["evidence"][0]
+    assert evidence["provenance_id"].startswith("sha256:")
+    assert evidence["provenance_id"] == repeated["evidence"][0]["provenance_id"]
+    assert evidence["provenance_id"] != changed["evidence"][0]["provenance_id"]
+    assert set(evidence) == {
+        "document_id", "title", "department", "version", "provenance_id", "excerpt",
+        "relevance_score", "ranking_score", "ranking_method", "matched_query_terms",
+        "score_explanation",
+    }
 
 
 def test_policy_assistant_abstains_without_matching_evidence():
@@ -48,6 +82,7 @@ def test_policy_assistant_abstains_without_matching_evidence():
 
     assert result["grounded"] is False
     assert result["abstained"] is True
+    assert result["abstention_reason_code"] == "insufficient_evidence"
     assert result["evidence"] == []
     assert result["retrieval"]["abstention_threshold"] == 0.20
     assert result["retrieval"]["confidence_status"] == "insufficient_evidence"
@@ -63,9 +98,19 @@ def test_policy_assistant_abstains_when_top_candidates_are_indistinguishable():
 
     assert result["grounded"] is False
     assert result["abstained"] is True
+    assert result["abstention_reason_code"] == "ambiguous_retrieval"
     assert result["evidence"] == []
     assert result["retrieval"]["confidence_status"] == "ambiguous"
     assert result["retrieval"]["ranking_margin"] == 0.0
+    assert len(result["retrieval"]["candidate_diagnostics"]) == 2
+    assert not any(
+        candidate["selected"]
+        for candidate in result["retrieval"]["candidate_diagnostics"]
+    )
+    assert all(
+        "excerpt" not in candidate
+        for candidate in result["retrieval"]["candidate_diagnostics"]
+    )
     assert "similarly ranked" in result["answer"]
 
 
@@ -118,6 +163,20 @@ def test_policy_evaluation_reports_retrieval_and_safe_abstention():
     }
     assert report["results"][0]["answerability"] == "answerable"
     assert report["results"][-1]["answerability"] == "unanswerable"
+    assert report["variants"] == 6
+    assert report["retrieval_consistency"] == 1.0
+    assert all(result["correct"] for result in report["variant_results"])
+
+
+def test_policy_change_gate_includes_retrieval_consistency_in_release_decision():
+    from src.policy_assistant.change_gate import evaluate_policy_change
+
+    report = evaluate_policy_change(APPROVED_POLICIES)
+
+    assert report["passed"] is True
+    assert report["baseline"]["retrieval_consistency"] == 1.0
+    assert report["candidate"]["retrieval_consistency"] == 1.0
+    assert "retrieval_consistency" in report["unchanged"]
 
 
 def test_policy_change_gate_rejects_a_revision_that_breaks_expected_retrieval():
