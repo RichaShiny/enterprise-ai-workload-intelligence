@@ -8,6 +8,8 @@ STOP_WORDS = {
     "a", "an", "and", "are", "be", "can", "do", "for", "how", "i", "in",
     "is", "must", "of", "on", "our", "the", "to", "what", "when", "with", "you",
 }
+ABSTENTION_THRESHOLD = 0.20
+MINIMUM_RANKING_MARGIN = 0.05
 
 
 @dataclass(frozen=True)
@@ -81,7 +83,8 @@ class ApprovedPolicyAssistant:
         evidence = self._rerank(question, lexical)
 
         primary = evidence[0] if evidence else None
-        if primary is None or primary.relevance_score < 0.20:
+        retrieval = self._retrieval_metadata(evidence)
+        if primary is None or primary.relevance_score < ABSTENTION_THRESHOLD:
             return {
                 "answer": (
                     "I could not find sufficient approved policy evidence for that question. "
@@ -90,13 +93,27 @@ class ApprovedPolicyAssistant:
                 "grounded": False,
                 "abstained": True,
                 "reason": "No approved policy matched the question.",
-                "retrieval": self._retrieval_metadata(),
+                "retrieval": retrieval,
+                "evidence": [],
+            }
+
+        if retrieval["confidence_status"] == "ambiguous":
+            return {
+                "answer": (
+                    "I found multiple similarly ranked approved policies and cannot safely "
+                    "choose one. Add a department or policy identifier, or route the question "
+                    "to the policy owner."
+                ),
+                "grounded": False,
+                "abstained": True,
+                "reason": "Top approved-policy candidates were too close to distinguish safely.",
+                "retrieval": retrieval,
                 "evidence": [],
             }
 
         relevant = [
             item for item in evidence
-            if item.relevance_score >= 0.20
+            if item.relevance_score >= ABSTENTION_THRESHOLD
             and item.relevance_score >= primary.relevance_score * 0.50
         ]
         return {
@@ -104,7 +121,7 @@ class ApprovedPolicyAssistant:
             "grounded": True,
             "abstained": False,
             "reason": "Answer is an evidence extract from the highest-ranking approved policy.",
-            "retrieval": self._retrieval_metadata(),
+            "retrieval": retrieval,
             "evidence": [asdict(item) for item in relevant],
         }
 
@@ -157,13 +174,29 @@ class ApprovedPolicyAssistant:
         )
         return f"{identity}\n{policy.text}"
 
-    def _retrieval_metadata(self) -> dict:
+    def _retrieval_metadata(self, evidence: list[PolicyEvidence]) -> dict:
+        primary = evidence[0] if evidence else None
+        runner_up = evidence[1] if len(evidence) > 1 else None
+        ranking_margin = None
+        confidence_status = "insufficient_evidence"
+        if primary and primary.relevance_score >= ABSTENTION_THRESHOLD:
+            confidence_status = "confident"
+            if runner_up and runner_up.relevance_score >= ABSTENTION_THRESHOLD:
+                ranking_margin = (
+                    primary.ranking_score - runner_up.ranking_score
+                ) / max(abs(primary.ranking_score), 1e-9)
+                if ranking_margin < MINIMUM_RANKING_MARGIN:
+                    confidence_status = "ambiguous"
+
         return {
             "ranking_method": "semantic" if self.semantic_reranker else "contextual_bm25",
             "contextualized": True,
             "context_fields": ["title", "department", "version", "document_id"],
             "candidate_limit": 3,
-            "abstention_threshold": 0.20,
+            "abstention_threshold": ABSTENTION_THRESHOLD,
+            "minimum_ranking_margin": MINIMUM_RANKING_MARGIN,
+            "ranking_margin": round(ranking_margin, 3) if ranking_margin is not None else None,
+            "confidence_status": confidence_status,
             "relevance_metric": "matched non-stopword query terms / query terms",
         }
 

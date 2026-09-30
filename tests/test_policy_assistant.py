@@ -32,6 +32,7 @@ def test_policy_assistant_returns_cited_approved_evidence():
     assert result["retrieval"]["ranking_method"] == "contextual_bm25"
     assert result["retrieval"]["abstention_threshold"] == 0.20
     assert result["retrieval"]["candidate_limit"] == 3
+    assert result["retrieval"]["confidence_status"] == "confident"
     assert result["evidence"][0]["matched_query_terms"] == [
         "expense", "finance", "records", "retained"
     ]
@@ -49,6 +50,23 @@ def test_policy_assistant_abstains_without_matching_evidence():
     assert result["abstained"] is True
     assert result["evidence"] == []
     assert result["retrieval"]["abstention_threshold"] == 0.20
+    assert result["retrieval"]["confidence_status"] == "insufficient_evidence"
+
+
+def test_policy_assistant_abstains_when_top_candidates_are_indistinguishable():
+    policies = (
+        PolicyDocument("retention-a", "Retention requirements", "finance", "1", "Records are retained."),
+        PolicyDocument("retention-b", "Retention requirements", "finance", "1", "Records are retained."),
+    )
+
+    result = ApprovedPolicyAssistant(policies).answer("What are the retention requirements?")
+
+    assert result["grounded"] is False
+    assert result["abstained"] is True
+    assert result["evidence"] == []
+    assert result["retrieval"]["confidence_status"] == "ambiguous"
+    assert result["retrieval"]["ranking_margin"] == 0.0
+    assert "similarly ranked" in result["answer"]
 
 
 def test_contextual_identity_disambiguates_policy_with_generic_body_text():

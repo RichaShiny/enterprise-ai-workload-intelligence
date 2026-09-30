@@ -28,6 +28,8 @@ def test_semantic_reranking_reorders_lexical_candidates_without_changing_evidenc
 
     assert result["grounded"] is True
     assert result["retrieval"]["ranking_method"] == "semantic"
+    assert result["retrieval"]["confidence_status"] == "confident"
+    assert result["retrieval"]["ranking_margin"] == 0.5
     assert result["evidence"][0]["document_id"] == "second"
     assert result["evidence"][0]["ranking_method"] == "semantic"
     assert result["evidence"][0]["matched_query_terms"] == ["approval", "owner", "review"]
