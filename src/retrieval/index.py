@@ -17,6 +17,20 @@ class RetrievalResult:
     metadata: Dict[str, Any]
 
 
+def normalize_retrieval_text(text: str) -> str:
+    """Canonicalize common numeric forms without rewriting query meaning."""
+    normalized = text.lower()
+    normalized = re.sub(r"(?<=\d),(?=\d{3}\b)", "", normalized)
+
+    def expand_suffix(match: re.Match[str]) -> str:
+        value = float(match.group(1))
+        multiplier = 1_000 if match.group(2) == "k" else 1_000_000
+        expanded = value * multiplier
+        return str(int(expanded)) if expanded.is_integer() else str(expanded)
+
+    return re.sub(r"\b(\d+(?:\.\d+)?)([km])\b", expand_suffix, normalized)
+
+
 class LexicalRetriever:
     def __init__(self):
         self.documents: List[Dict[str, Any]] = []
@@ -109,7 +123,7 @@ class BM25Retriever:
 
     @staticmethod
     def _tokens(text: str) -> List[str]:
-        return re.findall(r"[a-z0-9]+", text.lower())
+        return re.findall(r"[a-z0-9]+", normalize_retrieval_text(text))
 
     def fit(self, documents: List[Dict[str, Any]]) -> None:
         self.documents = documents

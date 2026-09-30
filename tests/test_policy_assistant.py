@@ -90,6 +90,15 @@ def test_contextual_identity_disambiguates_policy_with_generic_body_text():
     assert result["evidence"][0]["excerpt"] == policies[1].text
 
 
+def test_policy_assistant_normalizes_numeric_shorthand_for_exact_retrieval():
+    result = ApprovedPolicyAssistant().answer("Who approves vendor spend above 25k?")
+
+    assert result["grounded"] is True
+    assert result["evidence"][0]["document_id"] == "finance-spend-approval"
+    assert "25000" in result["evidence"][0]["matched_query_terms"]
+    assert "k_magnitude" in result["retrieval"]["query_normalization"]
+
+
 def test_policy_evaluation_reports_retrieval_and_safe_abstention():
     from src.policy_assistant.evaluation import evaluate_policy_assistant
 
