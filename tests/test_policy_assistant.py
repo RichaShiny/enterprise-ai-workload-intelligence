@@ -30,6 +30,12 @@ def test_policy_assistant_returns_cited_approved_evidence():
     assert result["abstained"] is False
     assert result["evidence"][0]["document_id"] == "finance-expense-retention"
     assert result["retrieval"]["ranking_method"] == "contextual_bm25"
+    assert result["retrieval"]["abstention_threshold"] == 0.20
+    assert result["retrieval"]["candidate_limit"] == 3
+    assert result["evidence"][0]["matched_query_terms"] == [
+        "expense", "finance", "records", "retained"
+    ]
+    assert "Matched 4 of 5" in result["evidence"][0]["score_explanation"]
     assert len(result["evidence"]) == 1
     assert "seven years" in result["answer"]
 
@@ -42,6 +48,7 @@ def test_policy_assistant_abstains_without_matching_evidence():
     assert result["grounded"] is False
     assert result["abstained"] is True
     assert result["evidence"] == []
+    assert result["retrieval"]["abstention_threshold"] == 0.20
 
 
 def test_contextual_identity_disambiguates_policy_with_generic_body_text():

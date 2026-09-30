@@ -30,5 +30,7 @@ def test_semantic_reranking_reorders_lexical_candidates_without_changing_evidenc
     assert result["retrieval"]["ranking_method"] == "semantic"
     assert result["evidence"][0]["document_id"] == "second"
     assert result["evidence"][0]["ranking_method"] == "semantic"
+    assert result["evidence"][0]["matched_query_terms"] == ["approval", "owner", "review"]
+    assert "contextual BM25" in result["evidence"][0]["score_explanation"]
     assert "Department: finance" in assistant.semantic_reranker.contextual_texts[0]
     assert result["evidence"][0]["excerpt"] == policies[1].text

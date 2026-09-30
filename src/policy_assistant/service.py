@@ -5,8 +5,8 @@ import re
 
 
 STOP_WORDS = {
-    "a", "an", "and", "are", "can", "do", "for", "how", "i", "in",
-    "is", "of", "on", "our", "the", "to", "what", "when", "with", "you",
+    "a", "an", "and", "are", "be", "can", "do", "for", "how", "i", "in",
+    "is", "must", "of", "on", "our", "the", "to", "what", "when", "with", "you",
 }
 
 
@@ -29,6 +29,8 @@ class PolicyEvidence:
     relevance_score: float
     ranking_score: float
     ranking_method: str
+    matched_query_terms: list[str]
+    score_explanation: str
 
 
 from src.policy_assistant.catalog import load_policy_catalog
@@ -160,6 +162,9 @@ class ApprovedPolicyAssistant:
             "ranking_method": "semantic" if self.semantic_reranker else "contextual_bm25",
             "contextualized": True,
             "context_fields": ["title", "department", "version", "document_id"],
+            "candidate_limit": 3,
+            "abstention_threshold": 0.20,
+            "relevance_metric": "matched non-stopword query terms / query terms",
         }
 
     def _evidence(
@@ -167,7 +172,8 @@ class ApprovedPolicyAssistant:
     ) -> PolicyEvidence:
         query_terms = self._terms(question)
         policy_terms = self._terms(self._contextualized_text(policy))
-        score = len(query_terms & policy_terms) / max(len(query_terms), 1)
+        matched_terms = sorted(query_terms & policy_terms)
+        score = len(matched_terms) / max(len(query_terms), 1)
         return PolicyEvidence(
             document_id=policy.document_id,
             title=policy.title,
@@ -177,4 +183,9 @@ class ApprovedPolicyAssistant:
             relevance_score=round(score, 3),
             ranking_score=round(ranking_score, 3),
             ranking_method="contextual_bm25",
+            matched_query_terms=matched_terms,
+            score_explanation=(
+                f"Matched {len(matched_terms)} of {len(query_terms)} normalized query terms; "
+                "ranking used contextual BM25."
+            ),
         )
