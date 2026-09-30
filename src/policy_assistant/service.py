@@ -190,6 +190,20 @@ class ApprovedPolicyAssistant:
                 if ranking_margin < MINIMUM_RANKING_MARGIN:
                     confidence_status = "ambiguous"
 
+        candidate_diagnostics = [
+            {
+                "rank": rank,
+                "document_id": item.document_id,
+                "department": item.department,
+                "version": item.version,
+                "relevance_score": item.relevance_score,
+                "ranking_score": round(item.ranking_score, 3),
+                "eligible": item.relevance_score >= ABSTENTION_THRESHOLD,
+                "selected": rank == 1 and confidence_status == "confident",
+            }
+            for rank, item in enumerate(evidence, start=1)
+        ]
+
         return {
             "ranking_method": "semantic" if self.semantic_reranker else "contextual_bm25",
             "contextualized": True,
@@ -199,6 +213,7 @@ class ApprovedPolicyAssistant:
             "minimum_ranking_margin": MINIMUM_RANKING_MARGIN,
             "ranking_margin": round(ranking_margin, 3) if ranking_margin is not None else None,
             "confidence_status": confidence_status,
+            "candidate_diagnostics": candidate_diagnostics,
             "relevance_metric": "matched non-stopword query terms / query terms",
             "query_normalization": ["thousands_separators", "k_magnitude", "m_magnitude"],
         }
