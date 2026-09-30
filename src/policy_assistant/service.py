@@ -160,8 +160,10 @@ class ApprovedPolicyAssistant:
 
     @staticmethod
     def _terms(text: str) -> set[str]:
+        from src.retrieval.index import normalize_retrieval_text
+
         return {
-            term for term in re.findall(r"[a-z0-9]+", text.lower())
+            term for term in re.findall(r"[a-z0-9]+", normalize_retrieval_text(text))
             if term not in STOP_WORDS and len(term) > 1
         }
 
@@ -198,6 +200,7 @@ class ApprovedPolicyAssistant:
             "ranking_margin": round(ranking_margin, 3) if ranking_margin is not None else None,
             "confidence_status": confidence_status,
             "relevance_metric": "matched non-stopword query terms / query terms",
+            "query_normalization": ["thousands_separators", "k_magnitude", "m_magnitude"],
         }
 
     def _evidence(

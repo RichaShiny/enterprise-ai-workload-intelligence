@@ -1,6 +1,6 @@
 import pytest
 
-from src.retrieval.index import BM25Retriever
+from src.retrieval.index import BM25Retriever, normalize_retrieval_text
 
 
 def test_bm25_prefers_rare_exact_identifiers():
@@ -31,3 +31,27 @@ def test_bm25_applies_metadata_filters_before_ranking():
 def test_bm25_requires_a_fitted_index():
     with pytest.raises(RuntimeError, match="fit"):
         BM25Retriever().search("policy")
+
+
+@pytest.mark.parametrize(
+    ("query", "expected"),
+    [
+        ("spend above $25,000", "spend above $25000"),
+        ("spend above 25k", "spend above 25000"),
+        ("budget is 1.5m", "budget is 1500000"),
+    ],
+)
+def test_retrieval_text_normalizes_equivalent_amounts(query, expected):
+    assert normalize_retrieval_text(query) == expected
+
+
+def test_bm25_matches_numeric_shorthand_to_catalog_amounts():
+    retriever = BM25Retriever()
+    retriever.fit([
+        {"document_id": "low", "text": "approval above 5,000 dollars", "metadata": {}},
+        {"document_id": "high", "text": "approval above 25,000 dollars", "metadata": {}},
+    ])
+
+    results = retriever.search("Who approves 25k?")
+
+    assert results[0].document_id == "high"
