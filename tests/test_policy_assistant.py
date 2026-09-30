@@ -33,6 +33,16 @@ def test_policy_assistant_returns_cited_approved_evidence():
     assert result["retrieval"]["abstention_threshold"] == 0.20
     assert result["retrieval"]["candidate_limit"] == 3
     assert result["retrieval"]["confidence_status"] == "confident"
+    assert result["retrieval"]["candidate_diagnostics"][0] == {
+        "rank": 1,
+        "document_id": "finance-expense-retention",
+        "department": "finance",
+        "version": "2026.1",
+        "relevance_score": 0.8,
+        "ranking_score": result["evidence"][0]["ranking_score"],
+        "eligible": True,
+        "selected": True,
+    }
     assert result["evidence"][0]["matched_query_terms"] == [
         "expense", "finance", "records", "retained"
     ]
@@ -66,6 +76,15 @@ def test_policy_assistant_abstains_when_top_candidates_are_indistinguishable():
     assert result["evidence"] == []
     assert result["retrieval"]["confidence_status"] == "ambiguous"
     assert result["retrieval"]["ranking_margin"] == 0.0
+    assert len(result["retrieval"]["candidate_diagnostics"]) == 2
+    assert not any(
+        candidate["selected"]
+        for candidate in result["retrieval"]["candidate_diagnostics"]
+    )
+    assert all(
+        "excerpt" not in candidate
+        for candidate in result["retrieval"]["candidate_diagnostics"]
+    )
     assert "similarly ranked" in result["answer"]
 
 
