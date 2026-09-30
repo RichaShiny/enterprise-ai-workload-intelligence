@@ -28,6 +28,7 @@ def test_policy_assistant_returns_cited_approved_evidence():
 
     assert result["grounded"] is True
     assert result["abstained"] is False
+    assert result["abstention_reason_code"] is None
     assert result["evidence"][0]["document_id"] == "finance-expense-retention"
     assert result["retrieval"]["ranking_method"] == "contextual_bm25"
     assert result["retrieval"]["abstention_threshold"] == 0.20
@@ -48,6 +49,7 @@ def test_policy_assistant_abstains_without_matching_evidence():
 
     assert result["grounded"] is False
     assert result["abstained"] is True
+    assert result["abstention_reason_code"] == "insufficient_evidence"
     assert result["evidence"] == []
     assert result["retrieval"]["abstention_threshold"] == 0.20
     assert result["retrieval"]["confidence_status"] == "insufficient_evidence"
@@ -63,6 +65,7 @@ def test_policy_assistant_abstains_when_top_candidates_are_indistinguishable():
 
     assert result["grounded"] is False
     assert result["abstained"] is True
+    assert result["abstention_reason_code"] == "ambiguous_retrieval"
     assert result["evidence"] == []
     assert result["retrieval"]["confidence_status"] == "ambiguous"
     assert result["retrieval"]["ranking_margin"] == 0.0
