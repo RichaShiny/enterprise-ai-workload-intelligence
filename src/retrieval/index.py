@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from collections import Counter
 import math
+from numbers import Integral, Real
 import re
 from typing import List, Dict, Any
 
@@ -112,6 +113,10 @@ class BM25Retriever:
     """Deterministic Okapi BM25 retrieval with optional metadata filtering."""
 
     def __init__(self, k1: float = 1.5, b: float = 0.75):
+        if isinstance(k1, bool) or not isinstance(k1, Real) or not math.isfinite(k1) or k1 <= 0:
+            raise ValueError("k1 must be a finite number greater than 0.")
+        if isinstance(b, bool) or not isinstance(b, Real) or not math.isfinite(b) or not 0 <= b <= 1:
+            raise ValueError("b must be a finite number between 0 and 1.")
         self.k1 = k1
         self.b = b
         self.documents: List[Dict[str, Any]] = []
@@ -147,6 +152,11 @@ class BM25Retriever:
     ) -> List[RetrievalResult]:
         if not self._fitted:
             raise RuntimeError("Retriever must be fit before calling search().")
+        if isinstance(top_k, bool) or not isinstance(top_k, Integral) or top_k <= 0:
+            raise ValueError("top_k must be a positive integer.")
+
+        if not self.documents:
+            return []
 
         query_terms = self._tokens(query)
         candidates = [

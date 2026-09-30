@@ -33,6 +33,34 @@ def test_bm25_requires_a_fitted_index():
         BM25Retriever().search("policy")
 
 
+@pytest.mark.parametrize("k1", [0, -1, float("inf"), float("nan"), True, "1.5"])
+def test_bm25_rejects_invalid_k1(k1):
+    with pytest.raises(ValueError, match="k1"):
+        BM25Retriever(k1=k1)
+
+
+@pytest.mark.parametrize("b", [-0.1, 1.1, float("inf"), float("nan"), True, "0.75"])
+def test_bm25_rejects_invalid_b(b):
+    with pytest.raises(ValueError, match="b"):
+        BM25Retriever(b=b)
+
+
+@pytest.mark.parametrize("top_k", [0, -1, 1.5, True])
+def test_bm25_rejects_invalid_top_k(top_k):
+    retriever = BM25Retriever()
+    retriever.fit([])
+
+    with pytest.raises(ValueError, match="top_k"):
+        retriever.search("policy", top_k=top_k)
+
+
+def test_bm25_empty_corpus_is_searchable():
+    retriever = BM25Retriever()
+    retriever.fit([])
+
+    assert retriever.search("policy") == []
+
+
 @pytest.mark.parametrize(
     ("query", "expected"),
     [
