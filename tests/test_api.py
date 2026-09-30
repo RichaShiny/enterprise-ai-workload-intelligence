@@ -195,6 +195,31 @@ def test_policy_assistant_api_returns_grounded_evidence():
     assert response.json()["execution"]["response_source"] == "deterministic_evidence"
 
 
+def test_policy_assistant_api_rejects_blank_and_oversized_questions():
+    from fastapi.testclient import TestClient
+    from src.api.main import app
+
+    client = TestClient(app)
+    blank = client.post("/policy-assistant", json={"question": "     "})
+    oversized = client.post("/policy-assistant", json={"question": "x" * 501})
+
+    assert blank.status_code == 422
+    assert oversized.status_code == 422
+
+
+def test_policy_assistant_api_normalizes_question_whitespace():
+    from fastapi.testclient import TestClient
+    from src.api.main import app
+
+    response = TestClient(app).post(
+        "/policy-assistant",
+        json={"question": "  Who approves vendor spend above 25k?  "},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["question"] == "Who approves vendor spend above 25k?"
+
+
 def test_decision_assistant_answers_routing_questions_from_current_limits():
     from fastapi.testclient import TestClient
     from src.api.main import app

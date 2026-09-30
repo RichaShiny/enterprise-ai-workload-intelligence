@@ -10,6 +10,7 @@ STOP_WORDS = {
 }
 ABSTENTION_THRESHOLD = 0.20
 MINIMUM_RANKING_MARGIN = 0.05
+MAX_QUESTION_LENGTH = 500
 
 
 @dataclass(frozen=True)
@@ -70,6 +71,22 @@ class ApprovedPolicyAssistant:
         ])
 
     def answer(self, question: str, department: str | None = None) -> dict:
+        question = question.strip()
+        if not question or len(question) > MAX_QUESTION_LENGTH:
+            return {
+                "answer": (
+                    "The policy question must contain text and be no longer than "
+                    f"{MAX_QUESTION_LENGTH} characters."
+                ),
+                "grounded": False,
+                "abstained": True,
+                "reason": "Question failed policy-assistant input validation.",
+                "retrieval": {
+                    "confidence_status": "invalid_input",
+                    "candidate_diagnostics": [],
+                },
+                "evidence": [],
+            }
         policies_by_id = {policy.document_id: policy for policy in self.policies}
         matches = self.retriever.search(
             question,

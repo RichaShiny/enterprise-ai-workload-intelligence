@@ -53,6 +53,17 @@ def test_policy_assistant_abstains_without_matching_evidence():
     assert result["retrieval"]["confidence_status"] == "insufficient_evidence"
 
 
+def test_policy_assistant_rejects_invalid_questions_without_searching():
+    assistant = ApprovedPolicyAssistant()
+
+    for question in ("   ", "x" * 501):
+        result = assistant.answer(question)
+        assert result["abstained"] is True
+        assert result["grounded"] is False
+        assert result["evidence"] == []
+        assert result["retrieval"]["confidence_status"] == "invalid_input"
+
+
 def test_policy_assistant_abstains_when_top_candidates_are_indistinguishable():
     policies = (
         PolicyDocument("retention-a", "Retention requirements", "finance", "1", "Records are retained."),
